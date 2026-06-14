@@ -93,6 +93,8 @@
   .vargrid label.chk{flex-direction:row;align-items:center;gap:7px;font-size:12.5px;color:var(--txt);grid-column:1/-1}
   .vargrid label.chk input{width:auto}
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
+     crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -601,10 +603,16 @@ document.getElementById('footer').innerHTML=
   'Probabilitati 6/49: cat. I 1:13.983.816, cat. II 1:54.201, cat. III 1:1.032, cat. IV 1:57. Simulatorul ruleaza integral local in browser.';
 
 // ---------- PREDICTIE (backend live) ----------
-// Backendul Flask serveste si pagina si API-ul pe aceeasi adresa (same-origin),
-// asa ca folosim URL relativ. Merge la fel pe Render, pplx.app si local.
-// Doar daca deschizi fisierul direct de pe disc (file://) cadem pe localhost.
-const PRED_API = (location.protocol === 'file:') ? 'http://localhost:8000' : '';
+// Adresa backendului, valabila pe toate mediile:
+//  - pplx.app: placeholder-ul __PORT_8000__ este inlocuit la publicare cu calea proxy (port/8000).
+//  - Render / hosting clasic: placeholder ramane neinlocuit, dar backendul e same-origin -> URL gol.
+//  - local de pe disc (file://): cadem pe localhost.
+const PRED_API = (function(){
+  var ph = '__PORT_8000__';
+  if (!ph.startsWith('__')) return ph;                 // pplx.app (placeholder inlocuit)
+  if (location.protocol === 'file:') return 'http://localhost:8000'; // fisier local
+  return '';                                            // Render / same-origin
+})();
 const SHAPE_ORDER = ['low-heavy','balanced','high-heavy'];
 let lastPredData = null;
 
