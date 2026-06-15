@@ -157,11 +157,12 @@
     </details>
 
     <div class="btnrow">
-      <button onclick="runPredict(false)">Genereaza predictia</button>
+      <button id="btnGen" onclick="runPredict(false)">Genereaza predictia</button>
       <button class="ghost" onclick="runPredict(true)">Reincarca istoricul (live)</button>
       <button class="ghost" id="btnPdf" onclick="exportPDF()" disabled style="opacity:.5">Export PDF (raport complet)</button>
       <span class="note" id="predStatus"></span>
     </div>
+    <div class="note" id="priceHint" style="margin-top:2px"></div>
     <div class="warn" id="predWarn"></div>
     <div id="predBody" class="hide" style="margin-top:14px">
       <div class="infobox" id="predDataInfo"></div>
@@ -637,6 +638,105 @@ const PRED_API = (function(){
 const SHAPE_ORDER = ['low-heavy','balanced','high-heavy'];
 let lastPredData = null;
 
+// ---------- PLATA (Stripe) ----------
+let PAYCFG = { payments_on:false, free_tickets:3, tickets_per_pack:3, price_per_pack_lei:5 };
+let PAID_TOKEN = null;   // session_id valid dupa o plata reusita (o singura generare)
+
+async function loadPayConfig(){
+  try{
+    const r = await fetch(`${PRED_API}/api/config`);
+    if(r.ok){ PAYCFG = await r.json(); }
+  }catch(e){ /* ramane gratuit daca nu raspunde */ }
+  refreshPriceHint();
+}
+
+function computePriceClient(n){
+  n = Math.max(0, parseInt(n||0,10));
+  const free = PAYCFG.free_tickets, per = PAYCFG.tickets_per_pack, ppp = PAYCFG.price_per_pack_lei;
+  const paid = Math.max(0, n - free);
+  const packs = paid>0 ? Math.ceil(paid/per) : 0;
+  return { n, free:Math.min(n,free), paid, packs, total:packs*ppp };
+}
+
+function refreshPriceHint(){
+  const el = document.getElementById('priceHint');
+  if(!el) return;
+  const n = parseInt((document.getElementById('varN')||{}).value||12,10);
+  const p = computePriceClient(n);
+  const btn = document.getElementById('btnGen');
+  if(!PAYCFG.payments_on){
+    el.innerHTML = `Primele ${PAYCFG.free_tickets} bilete sunt gratuite. (Plata nu este activata pe acest server - momentan tot ce generezi e gratuit.)`;
+    if(btn) btn.textContent = 'Genereaza predictia';
+    return;
+  }
+  if(p.total<=0){
+    el.innerHTML = `Generezi <b>${n}</b> bilete - <b style="color:var(--green)">gratuit</b> (primele ${PAYCFG.free_tickets} sunt gratis).`;
+    if(btn) btn.textContent = 'Genereaza predictia (gratis)';
+  } else {
+    el.innerHTML = `Generezi <b>${n}</b> bilete: ${p.free} gratis + ${p.paid} platite = <b>${p.packs}</b> pachet(e) x ${PAYCFG.price_per_pack_lei} lei = <b style="color:var(--accent)">${p.total} lei</b>. Plata se face securizat prin Stripe.`;
+    if(btn) btn.textContent = `Plateste ${p.total} lei si genereaza`;
+  }
+}
+
+async function startCheckout(n){
+  const st=document.getElementById('predStatus');
+  st.textContent='Pregatesc plata securizata...';
+  try{
+    const r = await fetch(`${PRED_API}/api/create-checkout`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ n })
+    });
+    const d = await r.json();
+    if(!r.ok || d.error){ throw new Error(d.error || ('HTTP '+r.status)); }
+    // salvam parametrii ca sa generam automat dupa intoarcerea de la plata
+    try{ sessionStorage.setItem('loto_pending_vars', JSON.stringify(readVars())); }catch(e){}
+    window.location.href = d.checkout_url;   // redirect la pagina Stripe
+  }catch(e){
+    st.textContent='';
+    const warn=document.getElementById('predWarn');
+    warn.style.display='block';
+    warn.textContent='Nu am putut initia plata: '+e.message;
+  }
+}
+
+// La incarcarea paginii: daca venim inapoi de la Stripe, verificam plata.
+async function handlePaymentReturn(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('pay_cancel')){
+    const st=document.getElementById('predStatus');
+    if(st) st.textContent='Plata a fost anulata. Poti incerca din nou.';
+    history.replaceState({}, '', location.pathname);
+    return;
+  }
+  const sid = params.get('paid_session');
+  if(!sid) return;
+  const st=document.getElementById('predStatus');
+  if(st) st.textContent='Verific plata...';
+  try{
+    const r = await fetch(`${PRED_API}/api/verify?session_id=`+encodeURIComponent(sid));
+    const d = await r.json();
+    history.replaceState({}, '', location.pathname);  // curatam URL-ul
+    if(d.paid){
+      PAID_TOKEN = sid;
+      // restauram parametrii salvati inainte de plata
+      try{
+        const saved = JSON.parse(sessionStorage.getItem('loto_pending_vars')||'null');
+        if(saved){
+          const set=(id,val)=>{const el=document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=(val==='1'); else el.value=val; }};
+          set('varN',saved.n);set('varPool',saved.pool);set('varPool9',saved.pool9);set('varExtra9',saved.extra9);
+          set('varSeed',saved.seed);set('varWFreq',saved.wfreq);set('varWDelay',saved.wdelay);set('varWPair',saved.wpair);set('varFilter',saved.filter);
+        }
+      }catch(e){}
+      if(st) st.textContent='Plata confirmata. Generez biletele...';
+      runPredict(false);   // genereaza automat folosind PAID_TOKEN
+    } else {
+      if(st) st.textContent='Plata nu a putut fi confirmata.';
+    }
+  }catch(e){
+    if(st) st.textContent='Eroare la verificarea platii: '+e.message;
+  }
+}
+
 function readVars(){
   const v=id=>document.getElementById(id);
   return {
@@ -657,14 +757,26 @@ async function runPredict(force){
   const st=document.getElementById('predStatus');
   const warn=document.getElementById('predWarn');
   warn.style.display='none';
+  const vars=readVars();
+  const nWanted = parseInt(vars.n,10)||0;
+
+  // Daca plata e activa, depasim numarul gratuit si NU avem deja un token platit,
+  // pornim plata in loc sa generam direct.
+  if(PAYCFG.payments_on && nWanted > PAYCFG.free_tickets && !PAID_TOKEN){
+    const p = computePriceClient(nWanted);
+    if(p.total>0){ startCheckout(nWanted); return; }
+  }
+
   st.textContent = force ? 'Reincarc istoricul live de pe loto49.ro...' : 'Analizez istoricul si generez biletele...';
   try{
-    const vars=readVars();
     const qs=new URLSearchParams(vars);
     if(force)qs.set('force','1');
+    if(PAID_TOKEN) qs.set('pay', PAID_TOKEN);   // dovada platii catre backend
     const res=await fetch(`${PRED_API}/api/predict?`+qs.toString());
     const d=await res.json();
     if(!res.ok || d.error){throw new Error(d.error||('HTTP '+res.status));}
+    PAID_TOKEN=null;   // tokenul e valabil pentru o singura generare
+    refreshPriceHint();
     lastPredData=d;
     const pdfBtn=document.getElementById('btnPdf');pdfBtn.disabled=false;pdfBtn.style.opacity='1';
     renderPrediction(d);
@@ -862,6 +974,13 @@ updateNeed();
 buildGrid('picksGrid','pick');
 buildGrid('drawGrid','draw');
 render();
+
+// init plata
+loadPayConfig().then(handlePaymentReturn);
+(function(){
+  const nEl = document.getElementById('varN');
+  if(nEl){ nEl.addEventListener('input', refreshPriceHint); nEl.addEventListener('change', refreshPriceHint); }
+})();
 </script>
 </body>
 </html>
