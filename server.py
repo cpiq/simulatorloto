@@ -26,7 +26,48 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import os
 
+try:
+    import stripe  # plata; optional - daca lipseste, butonul ramane gratuit
+except Exception:
+    stripe = None
+
 app = Flask(__name__, static_folder=None)  # static files served explicitly below
+
+# ---------------- Config plata (din variabile de mediu) ----------------
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
+PRICE_PER_PACK_LEI = float(os.environ.get("PRICE_PER_PACK_LEI", "5"))
+FREE_TICKETS = int(os.environ.get("FREE_TICKETS", "3"))
+TICKETS_PER_PACK = int(os.environ.get("TICKETS_PER_PACK", "3"))
+
+if stripe and STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+
+PAYMENTS_ON = bool(stripe and STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY)
+
+
+def _public_base():
+    """Adresa publica a aplicatiei pentru redirect dupa plata."""
+    env = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if env:
+        return env
+    # deducem din request daca nu e setata explicit
+    return request.host_url.rstrip("/")
+
+
+def compute_price(n_bilete):
+    """Primele FREE_TICKETS gratis; restul in pachete de TICKETS_PER_PACK,
+    rotunjit IN SUS, la PRICE_PER_PACK_LEI lei pachetul."""
+    import math
+    n = max(0, int(n_bilete))
+    paid = max(0, n - FREE_TICKETS)
+    packs = math.ceil(paid / TICKETS_PER_PACK) if paid > 0 else 0
+    total_lei = packs * PRICE_PER_PACK_LEI
+    return {
+        "n": n, "free": min(n, FREE_TICKETS), "paid_tickets": paid,
+        "packs": packs, "total_lei": total_lei,
+        "total_bani": int(round(total_lei * 100)),  # Stripe lucreaza in bani (subunitate)
+    }
 @app.route("/ads.txt")
 def ads_txt():
     return send_from_directory(".", "ads.txt")   # daca e in radacina repo-ului
@@ -308,6 +349,105 @@ class Analyzer:
         return sorted(existing.union(extra_nums.tolist()))
 
 
+# ---------------- API plata Stripe ----------------
+# Retinem sesiunile platite si deja folosite, ca un token sa nu fie refolosit.
+_PAID_SESSIONS = {}   # session_id -> {"n": int, "used": bool}
+
+
+@app.route("/api/config")
+def api_config():
+    """Frontend afla daca plata e activa, cheia publica si regulile de pret."""
+    return jsonify({
+        "payments_on": PAYMENTS_ON,
+        "publishable_key": STRIPE_PUBLISHABLE_KEY if PAYMENTS_ON else "",
+        "free_tickets": FREE_TICKETS,
+        "tickets_per_pack": TICKETS_PER_PACK,
+        "price_per_pack_lei": PRICE_PER_PACK_LEI,
+        "currency": "ron",
+    })
+
+
+@app.route("/api/price")
+def api_price():
+    """Calcul de pret pentru un numar de bilete (informativ, pentru afisare)."""
+    n = _clamp(int(request.args.get("n", 12)), 1, 50)
+    return jsonify(compute_price(n))
+
+
+@app.route("/api/create-checkout", methods=["POST"])
+def create_checkout():
+    """Creeaza o sesiune Stripe Checkout pentru biletele platite."""
+    if not PAYMENTS_ON:
+        return jsonify({"error": "Plata nu este configurata pe server."}), 503
+    data = request.get_json(silent=True) or {}
+    n = _clamp(int(data.get("n", 12)), 1, 50)
+    pr = compute_price(n)
+    if pr["total_bani"] <= 0:
+        return jsonify({"error": "Acest numar de bilete este gratuit.", "price": pr}), 400
+    base = _public_base()
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "ron",
+                    "product_data": {
+                        "name": "Predictie Loto 6/49 - %d bilete" % n,
+                        "description": "%d bilete gratis + %d platite (%d pachete x %g lei)" % (
+                            pr["free"], pr["paid_tickets"], pr["packs"], PRICE_PER_PACK_LEI),
+                    },
+                    "unit_amount": pr["total_bani"],
+                },
+                "quantity": 1,
+            }],
+            success_url=base + "/?paid_session={CHECKOUT_SESSION_ID}",
+            cancel_url=base + "/?pay_cancel=1",
+            metadata={"n": str(n)},
+        )
+    except Exception as e:
+        return jsonify({"error": "Stripe: " + str(e)}), 502
+    _PAID_SESSIONS[session.id] = {"n": n, "used": False, "confirmed": False}
+    return jsonify({"checkout_url": session.url, "session_id": session.id, "price": pr})
+
+
+def _session_is_paid(session_id):
+    """Verifica la Stripe daca sesiunea a fost platita. Returneaza (ok, n)."""
+    if not PAYMENTS_ON or not session_id:
+        return False, 0
+    try:
+        s = stripe.checkout.Session.retrieve(session_id)
+    except Exception:
+        return False, 0
+    # Atentie: obiectul Stripe NU se comporta ca un dict obisnuit (.get poate
+    # ridica AttributeError). Accesam campurile prin atribut, cu fallback.
+    pay_status = getattr(s, "payment_status", None)
+    if pay_status == "paid":
+        meta = getattr(s, "metadata", None)
+        # Pe obiectul Stripe, atat sesiunea cat si metadata se citesc prin
+        # atribut (.get poate ridica AttributeError). Folosim getattr.
+        raw_n = getattr(meta, "n", None) if meta is not None else None
+        try:
+            n = int(raw_n) if raw_n is not None else 0
+        except Exception:
+            n = 0
+        return True, n
+    return False, 0
+
+
+@app.route("/api/verify")
+def verify_payment():
+    """Frontend verifica dupa redirect ca plata e confirmata."""
+    sid = request.args.get("session_id", "")
+    ok, n = _session_is_paid(sid)
+    if ok:
+        rec = _PAID_SESSIONS.get(sid, {"n": n, "used": False})
+        rec["confirmed"] = True
+        rec["n"] = n or rec.get("n", 0)
+        _PAID_SESSIONS[sid] = rec
+        return jsonify({"paid": True, "n": rec["n"], "used": rec.get("used", False)})
+    return jsonify({"paid": False})
+
+
 # ---------------- API ----------------
 def _clamp(v, lo, hi):
     return max(lo, min(hi, v))
@@ -317,6 +457,28 @@ def _clamp(v, lo, hi):
 def predict():
     # parametri reglabili din interfata (cu limite de siguranta)
     n_bilete = _clamp(int(request.args.get("n", 12)), 1, 50)
+
+    # --- Garda de plata pe server (nu se poate ocoli din browser) ---
+    # Daca plata e activa si se cer mai multe bilete decat cele gratuite,
+    # cererea trebuie sa vina cu un token de sesiune Stripe platita, valabil
+    # pentru cel putin n_bilete si nefolosit inca.
+    if PAYMENTS_ON and n_bilete > FREE_TICKETS:
+        sid = request.args.get("pay", "")
+        rec = _PAID_SESSIONS.get(sid)
+        ok = False
+        if rec and not rec.get("used"):
+            paid_ok, paid_n = _session_is_paid(sid)
+            if paid_ok and paid_n >= n_bilete:
+                ok = True
+        if not ok:
+            return jsonify({
+                "error": "Plata necesara pentru mai mult de %d bilete." % FREE_TICKETS,
+                "need_payment": True,
+                "price": compute_price(n_bilete),
+            }), 402
+        # marcam tokenul ca folosit (o singura generare per plata)
+        rec["used"] = True
+        _PAID_SESSIONS[sid] = rec
     pool = _clamp(int(request.args.get("pool", 20)), 6, 49)
     extra9 = _clamp(int(request.args.get("extra9", 3)), 1, 10)
     pool9 = _clamp(int(request.args.get("pool9", 22)), 6, 49)
