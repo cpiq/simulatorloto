@@ -31,13 +31,18 @@ try:
 except Exception:
     stripe = None
 
-app = Flask(__name__, static_folder=None)  # static files served explicitly below
-@app.route("/ads.txt")
-def ads_txt():
-    return send_from_directory(".", "ads.txt")  
+
+app = Flask(__name__, static_folder=None)
+
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    return send_from_directory(".", "sitemap.xml")  
+    return send_from_directory(app.root_path, "sitemap.xml")
+
+@app.route("/ads.txt")
+def ads_txt():
+    return send_from_directory(app.root_path, "ads.txt")
+
+
 # ---------------- Config plata (din variabile de mediu) ----------------
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
