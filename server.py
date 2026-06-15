@@ -32,7 +32,12 @@ except Exception:
     stripe = None
 
 app = Flask(__name__, static_folder=None)  # static files served explicitly below
-
+@app.route("/ads.txt")
+def ads_txt():
+    return send_from_directory(".", "ads.txt")  
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    return send_from_directory(".", "sitemap.xml")  
 # ---------------- Config plata (din variabile de mediu) ----------------
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
@@ -68,10 +73,7 @@ def compute_price(n_bilete):
         "packs": packs, "total_lei": total_lei,
         "total_bani": int(round(total_lei * 100)),  # Stripe lucreaza in bani (subunitate)
     }
-@app.route("/ads.txt")
-def ads_txt():
-    return send_from_directory(".", "ads.txt")   # daca e in radacina repo-ului
-    # sau: return send_from_directory("static", "ads.txt")
+
 
 ARCHIVE_URLS = (
     "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
