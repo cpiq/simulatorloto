@@ -32,7 +32,12 @@ except Exception:
     stripe = None
 
 
+
 app = Flask(__name__, static_folder=None)
+
+@app.route("/robots.txt")
+def robots_txt():
+    return send_from_directory(app.root_path, "robots.txt")
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
