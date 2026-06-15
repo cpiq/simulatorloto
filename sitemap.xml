@@ -1,7 +1,9 @@
-
-<url>
-  <loc>https://www.simulareloto.ro/</loc>
-  <lastmod>2026-06-15T17:06:42+00:00</lastmod>
-  <changefreq>dayly</changefreq>
-  <priority>1</priority>
-</url>
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://simulatorloto.ro/</loc>
+    <lastmod>2026-06-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
