@@ -25,7 +25,12 @@ from flask import Flask, jsonify, request, send_from_directory
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import os
+
 app = Flask(__name__, static_folder=None)  # static files served explicitly below
+@app.route("/ads.txt")
+def ads_txt():
+    return send_from_directory(".", "ads.txt")   # daca e in radacina repo-ului
+    # sau: return send_from_directory("static", "ads.txt")
 
 ARCHIVE_URLS = (
     "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
