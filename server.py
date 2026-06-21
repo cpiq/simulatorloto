@@ -31,22 +31,7 @@ try:
 except Exception:
     stripe = None
 
-
-
-app = Flask(__name__, static_folder=None)
-
-@app.route("/robots.txt")
-def robots_txt():
-    return send_from_directory(app.root_path, "robots.txt")
-
-@app.route("/sitemap.xml")
-def sitemap_xml():
-    return send_from_directory(app.root_path, "sitemap.xml")
-
-@app.route("/ads.txt")
-def ads_txt():
-    return send_from_directory(app.root_path, "ads.txt")
-
+app = Flask(__name__, static_folder=None)  # static files served explicitly below
 
 # ---------------- Config plata (din variabile de mediu) ----------------
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
@@ -58,7 +43,13 @@ TICKETS_PER_PACK = int(os.environ.get("TICKETS_PER_PACK", "3"))
 if stripe and STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-PAYMENTS_ON = bool(stripe and STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY)
+# Kill-switch explicit pentru plata. Implicit OPRIT (aplicatia e gratuita).
+# Ca sa REACTIVEZI plata: seteaza in mediu PAYMENTS_ENABLED=true (sau 1/yes/on)
+# SI cheile Stripe (STRIPE_SECRET_KEY + STRIPE_PUBLISHABLE_KEY).
+PAYMENTS_ENABLED = os.environ.get("PAYMENTS_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+
+# Plata e activa doar daca: kill-switch pornit SI biblioteca stripe instalata SI ambele chei prezente.
+PAYMENTS_ON = bool(PAYMENTS_ENABLED and stripe and STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY)
 
 
 def _public_base():
@@ -83,7 +74,10 @@ def compute_price(n_bilete):
         "packs": packs, "total_lei": total_lei,
         "total_bani": int(round(total_lei * 100)),  # Stripe lucreaza in bani (subunitate)
     }
-
+@app.route("/ads.txt")
+def ads_txt():
+    return send_from_directory(".", "ads.txt")   # daca e in radacina repo-ului
+    # sau: return send_from_directory("static", "ads.txt")
 
 ARCHIVE_URLS = (
     "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
