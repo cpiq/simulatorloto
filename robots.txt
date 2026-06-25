@@ -1,4 +1,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://simulatorloto.ro/sitemap.xml
+Sitemap: https://simulareloto.ro/sitemap.xml
