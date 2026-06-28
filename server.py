@@ -492,12 +492,12 @@ def predict():
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"
     # ponderi scor (se normalizeaza ca sa insumeze 1)
-    w_freq = max(0.0, float(request.args.get("wfreq", 0.4)))
-    w_delay = max(0.0, float(request.args.get("wdelay", 0.3)))
-    w_pair = max(0.0, float(request.args.get("wpair", 0.3)))
+    w_freq = max(0.0, float(request.args.get("wfreq", 0.333)))
+    w_delay = max(0.0, float(request.args.get("wdelay", 0.333)))
+    w_pair = max(0.0, float(request.args.get("wpair", 0.333)))
     wsum = w_freq + w_delay + w_pair
     if wsum <= 0:
-        w_freq, w_delay, w_pair, wsum = 0.4, 0.3, 0.3, 1.0
+        w_freq, w_delay, w_pair, wsum = 0.333, 0.333, 0.333, 1.0
     w_freq, w_delay, w_pair = w_freq / wsum, w_delay / wsum, w_pair / wsum
 
     # extra9 nu poate depasi pool9 - 6 (raman macar 6 fixe)
