@@ -53,7 +53,7 @@ class LotoConfig:
     pool: int = 49           # din cate numere de top alege
     pool_extindere: int = 49 # pool pentru extinderea la 9
     extra_9: int = 3         # cate numere adauga la extinderea 6 -> 9
-    v_filter: int = 1 #filtru
+    v_filter: int = 0 #filtru
 
 # ============================================================
 # HTTP + PARSARE
