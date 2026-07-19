@@ -164,37 +164,42 @@ class FixturesScraper:
             home_el = div.select_one(".event__homeParticipant")
             away_el = div.select_one(".event__awayParticipant")
             time_el = div.select_one(".event__stageTime")
+            row_link_el = div.select_one("a.eventRowLink")
 
             if not home_el or not away_el:
                 continue
 
             home = home_el.get_text(strip=True)
             away = away_el.get_text(strip=True)
-
-            time_txt = ""
-            date_full = None
-            if time_el:
-                time_txt = time_el.get_text(strip=True)
-                # Flashscore pune de multe ori data/ora completa in atributul title
-                title_attr = time_el.get("title") or time_el.get("data-testid-title")
-                raw_date = title_attr or time_txt
-                date_full = self._parse_match_datetime(raw_date)
+            time_txt = time_el.get_text(strip=True) if time_el else ""
 
             if not home or not away:
                 continue
 
-            matches.append(
-                {
-                    "league": league_name,
-                    "home_team": home,
-                    "away_team": away,
-                    "kickoff": time_txt,
-                    "match_datetime": date_full,  # datetime sau None
-                    "raw_score": "",
-                }
-            )
+            home_url, away_url = None, None
+            if row_link_el and row_link_el.has_attr("href"):
+                match_url = row_link_el["href"]
+                # match_url: .../meci/fotbal/<slug-home>/<slug-away>/?mid=...
+                parts = match_url.rstrip("/").split("/")
+                if len(parts) >= 2:
+                    away_slug = parts[-1].split("?")[0]
+                    home_slug = parts[-2]
+                    base = "/".join(parts[:-2])
+                    home_url = f"{base}/{home_slug}/"
+                    away_url = f"{base}/{away_slug}/"
+
+            matches.append({
+                "league": league_name,
+                "home_team": home,
+                "away_team": away,
+                "kickoff": time_txt,
+                "home_team_url": home_url,
+                "away_team_url": away_url,
+                "raw_score": "",
+            })
 
         return matches
+
 
     def _parse_match_datetime(self, raw):
         """
@@ -388,6 +393,65 @@ def injury_factor(n):
 def impl_odds(p):
     return round(1 / max(p, 0.01), 2)
 
+class TeamHistoryScraper:
+    def __init__(self, timeout_s=25):
+        self.timeout_s = timeout_s
+        self._fetcher = FixturesScraper(timeout_s=timeout_s)  # reutilizam fetch-ul cu Playwright
+
+    def get_team_results_url(self, team_url_base):
+        """
+        team_url_base: url de forma https://www.flashscore.ro/echipa/XXXX/YYYY/
+        Adaugam /rezultate/ la finalul lui.
+        """
+        return team_url_base.rstrip("/") + "/rezultate/"
+
+    def fetch_team_history(self, team_name, team_url):
+        url = self.get_team_results_url(team_url)
+        html = self._fetcher._fetch_html_in_thread(url)
+        return self.parse_team_history(team_name, html)
+
+    def parse_team_history(self, team_name, html, max_matches=24):
+        if not html:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        match_divs = soup.select("[id^=g_]")
+
+        history = []
+        for div in match_divs[:max_matches]:
+            home_el = div.select_one(".event__homeParticipant")
+            away_el = div.select_one(".event__awayParticipant")
+            score_home_el = div.select_one(".event__score--home")
+            score_away_el = div.select_one(".event__score--away")
+            time_el = div.select_one(".event__stageTime")
+
+            if not home_el or not away_el or not score_home_el or not score_away_el:
+                continue
+
+            try:
+                hg = int(score_home_el.get_text(strip=True))
+                ag = int(score_away_el.get_text(strip=True))
+            except ValueError:
+                continue
+
+            home = home_el.get_text(strip=True)
+            away = away_el.get_text(strip=True)
+            date_txt = time_el.get("title") if time_el else None
+            match_date = self._fetcher._parse_match_datetime(date_txt) or datetime.now()
+
+            res = "H" if hg > ag else ("A" if ag > hg else "D")
+
+            history.append({
+                "date": match_date,
+                "home_team": home,
+                "away_team": away,
+                "home_goals": hg,
+                "away_goals": ag,
+                "result": res,
+            })
+
+        return history
+
 
 # -------------------------------------------------------------------
 #  ANALYZER: porneste scraper-ul, ruleaza modelul, face cele 3 bilete
@@ -395,6 +459,7 @@ def impl_odds(p):
 class BettingAnalyzer:
     def __init__(self, leagues_filter=None):
         self.scraper = FixturesScraper()
+        self.history_scraper = TeamHistoryScraper()   # doar aici
         self.leagues_filter = leagues_filter
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.match_analysis = []
@@ -460,10 +525,24 @@ class BettingAnalyzer:
         home = match["home_team"]
         away = match["away_team"]
 
-        # Istoric sintetic pentru ambele echipe
-        h_hist = self._synthetic_history(home)
-        a_hist = self._synthetic_history(away)
+        home_url = match.get("home_team_url")
+        away_url = match.get("away_team_url")
+
+        if not home_url or not away_url:
+            warn(f"  URL echipa lipsa pentru {home} / {away}, folosesc istoric sintetic fallback.")
+            h_hist = self._synthetic_history(home)
+            a_hist = self._synthetic_history(away)
+        else:
+            h_hist = self.history_scraper.fetch_team_history(home, home_url)
+            a_hist = self.history_scraper.fetch_team_history(away, away_url)
+            if not h_hist:
+                h_hist = self._synthetic_history(home)
+            if not a_hist:
+                a_hist = self._synthetic_history(away)
+
         all_hist = sorted(h_hist + a_hist, key=lambda x: x["date"])
+        
+        model = PoissonModel.fit(all_hist)
 
         model = PoissonModel.fit(all_hist)
         mu_h, mu_a = PoissonModel.predict_goals(model, home, away)
