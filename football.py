@@ -853,7 +853,7 @@ class BettingAnalyzer:
         self.print_per_match_ticket_models()
         self.build_tickets()
         self.print_tickets()
-        self.save_json()
+       # self.save_json()
         print(Fore.MAGENTA + "\n  Pariat responsabil. Model statistic, fara garantii de profit.\n")
 
 
