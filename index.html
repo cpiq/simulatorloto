@@ -1255,7 +1255,7 @@ async function runFootball(){
   const days = Math.max(1, Math.min(14, parseInt(document.getElementById('fbDays').value||'3',10)));
   const leagues = collectLeagues();
   if(!leagues.length){ warn.textContent='Adauga cel putin o liga (nume + URL) inainte de analiza.'; warn.style.display='block'; return; }
-  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la un minut)...';
+  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la 9 minute)...';
   try{
     const r = await fetch(`${PRED_API}/api/football/analyze`, {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days_window:days, leagues})
