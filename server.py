@@ -687,6 +687,7 @@ def index():
     return send_from_directory(".", "index.html")
 
 
+
 @app.route("/schemes.js")
 def schemes_js():
     return send_from_directory(".", "schemes.js", mimetype="application/javascript")
@@ -698,7 +699,6 @@ def robots_txt():
 @app.route("/sitemap.xml")
 def sitemap_xml():
     return send_from_directory(app.root_path, "sitemap.xml")
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

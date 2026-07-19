@@ -133,17 +133,72 @@ class FixturesScraper:
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as pw:
-            # --no-sandbox: necesar pe multe host-uri Linux (Render/Docker), altfel
-            # Chromium poate porni gol sau esua silentios.
+            # Flag-uri agresive de memorie/CPU: obligatorii pe Render 0.1 CPU / 512 MB.
+            # --no-sandbox / --disable-setuid-sandbox: necesare pe Linux/Docker.
+            # --disable-dev-shm-usage: nu folosi /dev/shm (mic in container).
+            # --single-process: un singur proces Chromium (fara renderer separat) -
+            #   scade dramatic memoria (nu mai forkeaza "armata" de procese helper).
+            # --disable-gpu / --disable-software-rasterizer: fara randare grafica.
+            # --no-zygote: fara procesul zygote (economie de memorie).
+            # restul: opresc retea/timere/extensii de fundal inutile la extragere.
             browser = pw.chromium.launch(
                 headless=True,
-                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--single-process",
+                    "--no-zygote",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-background-timer-throttling",
+                    "--disable-renderer-backgrounding",
+                    "--disable-client-side-phishing-detection",
+                    "--disable-default-apps",
+                    "--disable-sync",
+                    "--mute-audio",
+                    "--no-first-run",
+                    "--js-flags=--max-old-space-size=128",
+                ],
             )
+            # Viewport mic + fara imagini scumpe = memorie mult mai mica.
             context = browser.new_context(
                 user_agent=DEFAULT_USER_AGENT,
                 locale="ro-RO",
-                viewport={"width": 1366, "height": 900},
+                viewport={"width": 800, "height": 600},
+                device_scale_factor=1,
+                java_script_enabled=True,
             )
+            # Blochez resursele grele (imagini, fonturi, media, css, fonturi) - ele
+            # consuma cea mai multa memorie, iar noi avem nevoie doar de HTML/JS.
+            def _block(route):
+                rt = route.request.resource_type
+                if rt in ("image", "media", "font", "stylesheet"):
+                    try:
+                        route.abort()
+                        return
+                    except Exception:
+                        pass
+                # blochez si domenii de reclame/analytics grele
+                url_l = route.request.url.lower()
+                if any(b in url_l for b in ("doubleclick", "googlesyndication",
+                        "google-analytics", "googletagmanager", "facebook",
+                        "/ads", "adservice", "scorecardresearch", "hotjar")):
+                    try:
+                        route.abort()
+                        return
+                    except Exception:
+                        pass
+                try:
+                    route.continue_()
+                except Exception:
+                    pass
+            try:
+                context.route("**/*", _block)
+            except Exception:
+                pass
             page = context.new_page()
             try:
                 page.goto(url, timeout=self.timeout_s * 1000, wait_until="domcontentloaded")
