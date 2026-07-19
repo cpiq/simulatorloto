@@ -127,116 +127,161 @@ def scrape_available():
 # SCRAPER fixtures + istoric (Playwright + BeautifulSoup)
 # ------------------------------------------------------------------
 class FixturesScraper:
+    """Extrage pagini Flashscore cu Chromium headless, OPTIMIZAT pentru viteza:
+    - o SESIUNE de browser refolosita pentru toate paginile unei analize
+      (lansarea Chromium e cel mai scump pas pe 0.1 CPU - o platim o singura data);
+    - cookie-urile se accepta O SINGURA data per sesiune;
+    - memoria ramane mica: tot un singur browser + o singura pagina.
+    Fara sesiune deschisa, fiecare fetch isi porneste/inchide propriul browser
+    (comportament vechi, folosit de ex. la diagnostic)."""
+
+    # Flag-uri agresive de memorie/CPU: obligatorii pe Render 0.1 CPU / 512 MB.
+    BROWSER_ARGS = [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--single-process",
+        "--no-zygote",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-renderer-backgrounding",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--disable-sync",
+        "--mute-audio",
+        "--no-first-run",
+        "--js-flags=--max-old-space-size=128",
+    ]
+
     def __init__(self, timeout_s=25):
         self.timeout_s = timeout_s
+        self._pw = None
+        self._browser = None
+        self._context = None
+        self._page = None
+        self._cookies_done = False
 
-    def _fetch_html(self, url):
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as pw:
-            # Flag-uri agresive de memorie/CPU: obligatorii pe Render 0.1 CPU / 512 MB.
-            # --no-sandbox / --disable-setuid-sandbox: necesare pe Linux/Docker.
-            # --disable-dev-shm-usage: nu folosi /dev/shm (mic in container).
-            # --single-process: un singur proces Chromium (fara renderer separat) -
-            #   scade dramatic memoria (nu mai forkeaza "armata" de procese helper).
-            # --disable-gpu / --disable-software-rasterizer: fara randare grafica.
-            # --no-zygote: fara procesul zygote (economie de memorie).
-            # restul: opresc retea/timere/extensii de fundal inutile la extragere.
-            browser = pw.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--single-process",
-                    "--no-zygote",
-                    "--disable-gpu",
-                    "--disable-software-rasterizer",
-                    "--disable-extensions",
-                    "--disable-background-networking",
-                    "--disable-background-timer-throttling",
-                    "--disable-renderer-backgrounding",
-                    "--disable-client-side-phishing-detection",
-                    "--disable-default-apps",
-                    "--disable-sync",
-                    "--mute-audio",
-                    "--no-first-run",
-                    "--js-flags=--max-old-space-size=128",
-                ],
-            )
-            # Viewport mic + fara imagini scumpe = memorie mult mai mica.
-            context = browser.new_context(
-                user_agent=DEFAULT_USER_AGENT,
-                locale="ro-RO",
-                viewport={"width": 800, "height": 600},
-                device_scale_factor=1,
-                java_script_enabled=True,
-            )
-            # Blochez resursele grele (imagini, fonturi, media, css, fonturi) - ele
-            # consuma cea mai multa memorie, iar noi avem nevoie doar de HTML/JS.
-            def _block(route):
-                rt = route.request.resource_type
-                if rt in ("image", "media", "font", "stylesheet"):
-                    try:
-                        route.abort()
-                        return
-                    except Exception:
-                        pass
-                # blochez si domenii de reclame/analytics grele
-                url_l = route.request.url.lower()
-                if any(b in url_l for b in ("doubleclick", "googlesyndication",
-                        "google-analytics", "googletagmanager", "facebook",
-                        "/ads", "adservice", "scorecardresearch", "hotjar")):
-                    try:
-                        route.abort()
-                        return
-                    except Exception:
-                        pass
-                try:
-                    route.continue_()
-                except Exception:
-                    pass
+    @staticmethod
+    def _block_route(route):
+        """Blocheaza resursele grele (imagini/fonturi/css/media) si reclamele -
+        consuma cea mai multa memorie si timp; noua ne trebuie doar HTML+JS."""
+        rt = route.request.resource_type
+        if rt in ("image", "media", "font", "stylesheet"):
             try:
-                context.route("**/*", _block)
+                route.abort()
+                return
             except Exception:
                 pass
-            page = context.new_page()
+        url_l = route.request.url.lower()
+        if any(b in url_l for b in ("doubleclick", "googlesyndication",
+                "google-analytics", "googletagmanager", "facebook",
+                "/ads", "adservice", "scorecardresearch", "hotjar")):
             try:
-                page.goto(url, timeout=self.timeout_s * 1000, wait_until="domcontentloaded")
-                # 1) Accepta bannerul de cookies (mai multe variante de selector)
-                for sel in (
-                    "#onetrust-accept-btn-handler",
-                    "button#onetrust-accept-btn-handler",
-                    "button[aria-label='Sunt de acord']",
-                    "button:has-text('Sunt de acord')",
-                    "button:has-text('Accept')",
-                ):
-                    try:
-                        page.click(sel, timeout=3500)
-                        page.wait_for_timeout(700)
-                        break
-                    except Exception:
-                        pass
-                # 2) Asteapta randurile de meciuri (retry cu scroll + networkidle)
-                got = False
-                for _ in range(3):
-                    try:
-                        page.wait_for_selector("[id^=g_]", timeout=8000)
-                        got = True
-                        break
-                    except Exception:
-                        try:
-                            page.mouse.wheel(0, 2000)
-                            page.wait_for_load_state("networkidle", timeout=6000)
-                        except Exception:
-                            page.wait_for_timeout(2500)
-                if not got:
-                    page.wait_for_timeout(3000)
-                page.wait_for_timeout(1000)
-                html = page.content()
-            finally:
-                browser.close()
-            return html
+                route.abort()
+                return
+            except Exception:
+                pass
+        try:
+            route.continue_()
+        except Exception:
+            pass
+
+    # ---------------- sesiune persistenta (viteza) ----------------
+    def open_session(self):
+        """Porneste UN singur Chromium refolosit pentru toate paginile."""
+        if self._page is not None:
+            return
+        from playwright.sync_api import sync_playwright
+        self._pw = sync_playwright().start()
+        self._browser = self._pw.chromium.launch(headless=True, args=self.BROWSER_ARGS)
+        self._context = self._browser.new_context(
+            user_agent=DEFAULT_USER_AGENT,
+            locale="ro-RO",
+            viewport={"width": 800, "height": 600},
+            device_scale_factor=1,
+            java_script_enabled=True,
+        )
+        try:
+            self._context.route("**/*", self._block_route)
+        except Exception:
+            pass
+        self._page = self._context.new_page()
+        self._cookies_done = False
+
+    def close_session(self):
+        """Inchide complet browserul si elibereaza memoria."""
+        for closer in (lambda: self._browser.close(), lambda: self._pw.stop()):
+            try:
+                closer()
+            except Exception:
+                pass
+        self._pw = self._browser = self._context = self._page = None
+        self._cookies_done = False
+
+    def _restart_session(self):
+        self.close_session()
+        self.open_session()
+
+    def _nav_and_get(self, url):
+        """Navigheaza pagina sesiunii curente si intoarce HTML-ul."""
+        page = self._page
+        page.goto(url, timeout=self.timeout_s * 1000, wait_until="domcontentloaded")
+        # Accepta bannerul de cookies DOAR o data per sesiune (economie mare de timp).
+        if not self._cookies_done:
+            for sel in (
+                "#onetrust-accept-btn-handler",
+                "button[aria-label='Sunt de acord']",
+                "button:has-text('Sunt de acord')",
+                "button:has-text('Accept')",
+            ):
+                try:
+                    page.click(sel, timeout=2500)
+                    page.wait_for_timeout(500)
+                    break
+                except Exception:
+                    pass
+            self._cookies_done = True
+        # Asteapta randurile de meciuri (retry cu scroll)
+        got = False
+        for _ in range(2):
+            try:
+                page.wait_for_selector("[id^=g_]", timeout=8000)
+                got = True
+                break
+            except Exception:
+                try:
+                    page.mouse.wheel(0, 2000)
+                    page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    page.wait_for_timeout(2000)
+        if not got:
+            page.wait_for_timeout(2500)
+        page.wait_for_timeout(300)
+        return page.content()
+
+    def _fetch_html(self, url):
+        """Ia HTML-ul unei pagini. Refoloseste sesiunea daca e deschisa;
+        altfel porneste si inchide un browser doar pentru acest apel.
+        La orice eroare de pagina/browser, reporneste sesiunea O data si reincearca."""
+        ephemeral = self._page is None
+        if ephemeral:
+            self.open_session()
+        try:
+            try:
+                return self._nav_and_get(url)
+            except Exception:
+                # browserul/pagina a picat (ex. --single-process e sensibil) ->
+                # restart o singura data si reincercare
+                self._restart_session()
+                return self._nav_and_get(url)
+        except Exception:
+            return ""
+        finally:
+            if ephemeral:
+                self.close_session()
 
     def debug_fetch(self, url):
         """Diagnostic: intoarce URL-ul incercat, marimea HTML, nr de randuri g_,
@@ -368,8 +413,9 @@ class FixturesScraper:
 
 
 class TeamHistoryScraper:
-    def __init__(self, timeout_s=25):
-        self._f = FixturesScraper(timeout_s=timeout_s)
+    def __init__(self, timeout_s=25, fetcher=None):
+        # fetcher partajat => REFOLOSESTE browserul deja pornit (viteza).
+        self._f = fetcher or FixturesScraper(timeout_s=timeout_s)
 
     def fetch_team_history(self, team_name, team_url):
         if not team_url:
@@ -537,9 +583,20 @@ class BettingAnalyzer:
         self.leagues = leagues
         self.days_window = int(days_window)
         self.scraper = FixturesScraper()
-        self.history_scraper = TeamHistoryScraper()
+        # acelasi fetcher => un singur browser pentru fixtures + istoric
+        self.history_scraper = TeamHistoryScraper(fetcher=self.scraper)
         self.match_analysis = []
         self.tickets = []
+        # cache istoric per URL de echipa: o echipa care apare in mai multe
+        # meciuri e descarcata O SINGURA data (viteza).
+        self._hist_cache = {}
+
+    def _team_history_cached(self, team, url):
+        if url in self._hist_cache:
+            return self._hist_cache[url]
+        hist = self.history_scraper.fetch_team_history(team, url)
+        self._hist_cache[url] = hist
+        return hist
 
     def load_matches(self):
         all_matches = []
@@ -565,8 +622,8 @@ class BettingAnalyzer:
         # Fara URL de echipa nu putem lua istoric real -> nu analizam.
         if not h_url or not a_url:
             return None
-        h_hist = self.history_scraper.fetch_team_history(home, h_url)
-        a_hist = self.history_scraper.fetch_team_history(away, a_url)
+        h_hist = self._team_history_cached(home, h_url)
+        a_hist = self._team_history_cached(away, a_url)
         # Daca lipseste istoricul real al oricarei echipe -> nu analizam.
         if not h_hist or not a_hist:
             return None
@@ -681,7 +738,13 @@ class BettingAnalyzer:
 def analyze(leagues, days_window=DEFAULT_DAYS_WINDOW):
     """Ruleaza analiza completa. Presupune ca scrape_available() este True."""
     az = BettingAnalyzer(leagues, days_window=days_window)
-    matches, total = az.load_matches()
-    in_window = len(matches)
-    az.run_analysis(matches)
+    # UN singur browser pentru toata analiza (fixtures + toate istoricele):
+    # lansarea Chromium e cel mai scump pas pe CPU mic - o facem o data.
+    az.scraper.open_session()
+    try:
+        matches, total = az.load_matches()
+        in_window = len(matches)
+        az.run_analysis(matches)
+    finally:
+        az.scraper.close_session()
     return az.result(total, in_window_count=in_window)

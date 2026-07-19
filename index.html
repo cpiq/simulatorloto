@@ -129,8 +129,6 @@
     <button class="tab" id="tabBtnFotbal" onclick="showTab('fotbal')">Pariuri fotbal</button>
   </div>
 </header>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
-     crossorigin="anonymous"></script>
 <!-- 1 -->
 <ins class="adsbygoogle"
      style="display:block"
@@ -228,8 +226,6 @@
       <div class="note" id="predDisclaimer"></div>
     </div>
   </div>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
-     crossorigin="anonymous"></script>
 <ins class="adsbygoogle"
      style="display:block"
      data-ad-format="autorelaxed"
@@ -377,9 +373,19 @@
 
   <div class="card">
     <h2>Analizor pariuri fotbal (model Poisson)</h2>
-    <div class="sub">Extrage meciurile din ligile de mai jos (sursa: Flashscore), aplica un model Poisson + forma echipelor + accidentari si propune 3 bilete. Adaptat din scriptul "Football Betting Analyzer" by Costin Picu.</div>
+    <div class="sub">Extrage meciurile din ligile de mai jos (sursa: Flashscore), aplica un model Poisson + forma echipelor (DOAR istoric real) si propune 3 bilete. Adaptat din scriptul "Football Betting Analyzer" by Costin Picu.</div>
     <div id="fbEnvNote"></div>
   </div>
+
+  <!-- reclama fotbal 1: push-ul se face la prima deschidere a tabului
+       (daca push-ul se face cat timp tabul e display:none, AdSense da
+       eroarea availableWidth=0 si unitatea ramane goala) -->
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-2979775674052404"
+       data-ad-slot="8107126271"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
 
   <div class="card">
     <h2>Ligi si linkuri (editabile, salvate pe server)</h2>
@@ -425,6 +431,13 @@
     <div id="fbTickets"></div>
     <div class="note" style="margin-top:14px">Atentie: pariurile implica risc. Model statistic informativ, NU garanteaza castig. Analiza foloseste DOAR istoric real extras din Flashscore; meciurile fara date reale suficiente sunt sarite, nu se inventeaza date. Joaca responsabil, 18+.</div>
   </div>
+
+  <!-- reclama fotbal 2 (autorelaxed), init tot la prima deschidere a tabului -->
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-format="autorelaxed"
+       data-ad-client="ca-pub-2979775674052404"
+       data-ad-slot="8495268389"></ins>
 
 </div><!-- /tab-fotbal -->
 
@@ -1074,6 +1087,14 @@ function showTab(which){
   document.getElementById('tabBtnLoto').classList.toggle('active', isLoto);
   document.getElementById('tabBtnFotbal').classList.toggle('active', !isLoto);
   if(!isLoto && !window._fbLoaded){ window._fbLoaded = true; loadLeagues(); }
+  // Initializeaza reclamele din tabul fotbal DOAR la prima afisare a lui
+  // (push pe un container display:none => eroare AdSense availableWidth=0).
+  if(!isLoto && !window._fbAdsDone){
+    window._fbAdsDone = true;
+    document.querySelectorAll('#tab-fotbal ins.adsbygoogle').forEach(function(){
+      try{ (adsbygoogle = window.adsbygoogle || []).push({}); }catch(e){}
+    });
+  }
 }
 
 /* ==================== FOTBAL ==================== */

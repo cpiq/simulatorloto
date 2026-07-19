@@ -74,10 +74,20 @@ def compute_price(n_bilete):
         "packs": packs, "total_lei": total_lei,
         "total_bani": int(round(total_lei * 100)),  # Stripe lucreaza in bani (subunitate)
     }
+# app.root_path = directorul in care sta server.py -> functioneaza indiferent
+# din ce director e pornit procesul (gunicorn, python direct etc.).
 @app.route("/ads.txt")
 def ads_txt():
-    return send_from_directory(".", "ads.txt")   # daca e in radacina repo-ului
-    # sau: return send_from_directory("static", "ads.txt")
+    return send_from_directory(app.root_path, "ads.txt")
+
+@app.route("/robots.txt")
+def robots_txt():
+    # Necesar pt SEO + crawlerul AdSense (Mediapartners-Google).
+    return send_from_directory(app.root_path, "robots.txt")
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    return send_from_directory(app.root_path, "sitemap.xml")
 
 ARCHIVE_URLS = (
     "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
@@ -687,18 +697,9 @@ def index():
     return send_from_directory(".", "index.html")
 
 
-
 @app.route("/schemes.js")
 def schemes_js():
     return send_from_directory(".", "schemes.js", mimetype="application/javascript")
-
-app.route("/robots.txt")
-def robots_txt():
-    return send_from_directory(app.root_path, "robots.txt")
-
-@app.route("/sitemap.xml")
-def sitemap_xml():
-    return send_from_directory(app.root_path, "sitemap.xml")
 
 
 if __name__ == "__main__":
