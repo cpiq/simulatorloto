@@ -137,15 +137,40 @@ class FixturesScraper:
             context = browser.new_context(user_agent=DEFAULT_USER_AGENT, locale="ro-RO")
             page = context.new_page()
             try:
-                page.goto(url, timeout=self.timeout_s * 1000)
+                page.goto(url, timeout=self.timeout_s * 1000, wait_until="domcontentloaded")
+                # 1) Accepta bannerul de cookies (altfel meciurile nu se incarca)
+                for sel in ("#onetrust-accept-btn-handler", "button#onetrust-accept-btn-handler"):
+                    try:
+                        page.click(sel, timeout=4000)
+                        page.wait_for_timeout(800)
+                        break
+                    except Exception:
+                        pass
+                # 2) Asteapta randurile de meciuri
                 try:
                     page.wait_for_selector("[id^=g_]", timeout=self.timeout_s * 1000)
                 except Exception:
                     page.wait_for_timeout(5000)
+                page.wait_for_timeout(1200)
                 html = page.content()
             finally:
                 browser.close()
             return html
+
+    @staticmethod
+    def fixtures_url(url):
+        """Asigura ca URL-ul ligii duce la pagina de meciuri viitoare (/meciuri/).
+        Pagina default a unei ligi arata clasamentul/rezultatele, nu fixtures."""
+        u = (url or "").strip()
+        if not u:
+            return u
+        base = u.split("#")[0].rstrip("/")
+        # daca deja pointeaza spre meciuri/rezultate/clasament, lasa asa
+        low = base.lower()
+        for kw in ("/meciuri", "/rezultate", "/clasament", "/program"):
+            if low.endswith(kw):
+                return base + "/"
+        return base + "/meciuri/"
 
     def fetch_html(self, url):
         try:
@@ -192,10 +217,13 @@ class FixturesScraper:
             away = away_el.get_text(strip=True)
             if not home or not away:
                 continue
+            if not time_el:
+                time_el = div.select_one(".event__time")
             time_txt = time_el.get_text(strip=True) if time_el else ""
             match_dt = None
             if time_el:
-                match_dt = self._parse_match_datetime(time_el.get("title") or time_txt)
+                # Flashscore pune ora in TEXT (ex '19.07. 16:30'); 'title' e adesea gol.
+                match_dt = self._parse_match_datetime(time_txt) or self._parse_match_datetime(time_el.get("title"))
             home_url, away_url = None, None
             if row_link_el and row_link_el.has_attr("href"):
                 parts = row_link_el["href"].rstrip("/").split("/")
@@ -217,7 +245,8 @@ class FixturesScraper:
         return matches
 
     def get_league_fixtures(self, league_name, url):
-        return self.parse_fixtures(league_name, self.fetch_html(url))
+        target = self.fixtures_url(url)
+        return self.parse_fixtures(league_name, self.fetch_html(target))
 
 
 class TeamHistoryScraper:
