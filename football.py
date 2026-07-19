@@ -3,7 +3,9 @@
 Analizor pariuri fotbal (Flashscore) - modul backend pentru aplicatia web.
 
 Adaptat din scriptul de consola "FOOTBALL BETTING ANALYZER" by Costin Picu.
-Model: Poisson + Forma + Accidentari (istoric sintetic acolo unde nu avem date reale).
+Model: Poisson + Forma, calculat DOAR pe istoric REAL extras din Flashscore.
+Daca un meci nu are istoric real pentru ambele echipe, NU este analizat
+(nu se inventeaza date - fara istoric sintetic).
 
 IMPORTANT despre extragerea meciurilor:
   - Extragerea reala din paginile Flashscore are nevoie de un browser automat
@@ -19,7 +21,6 @@ deci este partajata (o vede oricine intra pe acelasi server).
 
 import os
 import json
-import random
 import threading
 from datetime import datetime, timedelta
 
@@ -301,6 +302,17 @@ class FixturesScraper:
             pass
         return None
 
+    @staticmethod
+    def _team_url_from_slug(origin, slug):
+        """Slug de forma '<nume>-<id8>' -> URL real de echipa
+        '<origin>/echipa/<nume>/<id8>/'. Intoarce None daca nu poate separa id-ul."""
+        if not slug or "-" not in slug:
+            return None
+        name, _, team_id = slug.rpartition("-")
+        if not name or not team_id:
+            return None
+        return f"{origin}/echipa/{name}/{team_id}/"
+
     def parse_fixtures(self, league_name, html):
         if not html:
             return []
@@ -326,13 +338,19 @@ class FixturesScraper:
                 match_dt = self._parse_match_datetime(time_txt) or self._parse_match_datetime(time_el.get("title"))
             home_url, away_url = None, None
             if row_link_el and row_link_el.has_attr("href"):
-                parts = row_link_el["href"].rstrip("/").split("/")
+                # href e o pagina de MECI, ex:
+                #   https://www.flashscore.ro/meci/fotbal/atletico-mg-hGLC5Bah/bahia-UeD7XtzM/?mid=...
+                # Fiecare slug e <nume>-<id8>. Pagina REALA de echipa este
+                #   https://www.flashscore.ro/echipa/<nume>/<id8>/
+                # iar istoricul la .../rezultate/. Construim URL-ul real de echipa
+                # ca sa luam ISTORIC REAL (nu date inventate).
+                parts = row_link_el["href"].split("?")[0].rstrip("/").split("/")
                 if len(parts) >= 2:
-                    away_slug = parts[-1].split("?")[0]
+                    away_slug = parts[-1]
                     home_slug = parts[-2]
-                    base = "/".join(parts[:-2])
-                    home_url = f"{base}/{home_slug}/"
-                    away_url = f"{base}/{away_slug}/"
+                    origin = "/".join(row_link_el["href"].split("/")[:3])  # https://host
+                    home_url = self._team_url_from_slug(origin, home_slug)
+                    away_url = self._team_url_from_slug(origin, away_slug)
             matches.append({
                 "league": league_name,
                 "home_team": home,
@@ -377,7 +395,16 @@ class TeamHistoryScraper:
                 ag = int(sa.get_text(strip=True))
             except ValueError:
                 continue
-            match_date = self._f._parse_match_datetime(time_el.get("title") if time_el else None) or datetime.now()
+            # Data e de obicei in TEXT (ex '31.05. 19:00'); 'title' e adesea gol.
+            raw_txt = time_el.get_text(strip=True) if time_el else None
+            raw_title = time_el.get("title") if time_el else None
+            match_date = (self._f._parse_match_datetime(raw_txt)
+                          or self._f._parse_match_datetime(raw_title))
+            if match_date is None:
+                match_date = datetime.now()
+            elif match_date > datetime.now() + timedelta(days=2):
+                # istoric = trecut; '31.12.' parsat cu anul curent ar parea viitor -> anul precedent
+                match_date = match_date.replace(year=match_date.year - 1)
             res = "H" if hg > ag else ("A" if ag > hg else "D")
             history.append({
                 "date": match_date,
@@ -530,24 +557,30 @@ class BettingAnalyzer:
         return filtered, len(all_matches)
 
     def analyze_match(self, match):
+        """Analizeaza un meci FOLOSIND DOAR ISTORIC REAL.
+        Daca nu exista istoric real pentru ambele echipe, intoarce None -
+        NU inventam date (fara istoric sintetic)."""
         home, away = match["home_team"], match["away_team"]
-        used_synthetic = False
         h_url, a_url = match.get("home_team_url"), match.get("away_team_url")
-    
+        # Fara URL de echipa nu putem lua istoric real -> nu analizam.
+        if not h_url or not a_url:
+            return None
         h_hist = self.history_scraper.fetch_team_history(home, h_url)
         a_hist = self.history_scraper.fetch_team_history(away, a_url)
-         
+        # Daca lipseste istoricul real al oricarei echipe -> nu analizam.
+        if not h_hist or not a_hist:
+            return None
         all_hist = sorted(h_hist + a_hist, key=lambda x: x["date"])
         model = PoissonModel.fit(all_hist)
+        # Fit intoarce None daca sunt sub 5 meciuri reale -> date insuficiente.
+        if model is None:
+            return None
         mu_h, mu_a = PoissonModel.predict_goals(model, home, away)
         form_h = team_form(all_hist, home)
         form_a = team_form(all_hist, away)
         mu_h = max(0.2, mu_h * (1.0 + (form_h["pts"] - 9) * 0.01))
         mu_a = max(0.2, mu_a * (1.0 + (form_a["pts"] - 9) * 0.01))
-        n_inj_h = random.randint(0, 3)
-        n_inj_a = random.randint(0, 3)
-        mu_h *= injury_factor(n_inj_h)
-        mu_a *= injury_factor(n_inj_a)
+        # Accidentarile nu sunt extrase real, deci NU le inventam (factor neutru).
         probs = PoissonModel.probabilities(mu_h, mu_a)
         max_p = max(probs["home_win"], probs["draw"], probs["away_win"])
         if probs["home_win"] == max_p:
@@ -572,16 +605,23 @@ class BettingAnalyzer:
             "goals_pick": goals_pick, "goals_prob": round(goals_prob, 4), "goals_odds": impl_odds(goals_prob),
             "confidence": round(max_p * 100, 1),
             "form_home": form_h, "form_away": form_a,
-            "n_inj_home": n_inj_h, "n_inj_away": n_inj_a,
-            "used_synthetic_history": used_synthetic,
+            "used_synthetic_history": False,
+            "n_hist_matches": model["n_matches"],
         }
 
     def run_analysis(self, matches):
+        """Analizeaza doar meciurile cu istoric real. Cele fara date
+        suficiente (analyze_match a intors None) sunt sarite si numarate."""
+        self.skipped_no_data = 0
         for m in matches:
             try:
-                self.match_analysis.append(self.analyze_match(m))
+                res = self.analyze_match(m)
+                if res is None:
+                    self.skipped_no_data += 1
+                    continue
+                self.match_analysis.append(res)
             except Exception:
-                pass
+                self.skipped_no_data += 1
 
     def build_tickets(self):
         if not self.match_analysis:
@@ -620,13 +660,15 @@ class BettingAnalyzer:
             t["combined_prob"] = round(cp * 100, 2)
         return tickets
 
-    def result(self, total_extracted):
+    def result(self, total_extracted, in_window_count=None):
         self.tickets = self.build_tickets()
         return {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
             "days_window": self.days_window,
             "total_extracted": total_extracted,
-            "in_window": len(self.match_analysis),
+            "in_window": in_window_count if in_window_count is not None else len(self.match_analysis),
+            "analyzed": len(self.match_analysis),
+            "skipped_no_data": getattr(self, "skipped_no_data", 0),
             "matches": [
                 {k: v for k, v in m.items() if k not in ("form_home", "form_away")}
                 | {"form_home": m["form_home"], "form_away": m["form_away"]}
@@ -640,5 +682,6 @@ def analyze(leagues, days_window=DEFAULT_DAYS_WINDOW):
     """Ruleaza analiza completa. Presupune ca scrape_available() este True."""
     az = BettingAnalyzer(leagues, days_window=days_window)
     matches, total = az.load_matches()
+    in_window = len(matches)
     az.run_analysis(matches)
-    return az.result(total)
+    return az.result(total, in_window_count=in_window)

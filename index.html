@@ -423,7 +423,7 @@
       <tbody id="fbMatchBody"></tbody>
     </table></div>
     <div id="fbTickets"></div>
-    <div class="note" style="margin-top:14px">Atentie: pariurile implica risc. Model statistic informativ, NU garanteaza castig. Istoricul echipelor poate fi partial sintetic (marcat cu eticheta "istoric sintetic") cand nu exista date reale. Joaca responsabil, 18+.</div>
+    <div class="note" style="margin-top:14px">Atentie: pariurile implica risc. Model statistic informativ, NU garanteaza castig. Analiza foloseste DOAR istoric real extras din Flashscore; meciurile fara date reale suficiente sunt sarite, nu se inventeaza date. Joaca responsabil, 18+.</div>
   </div>
 
 </div><!-- /tab-fotbal -->
@@ -1169,17 +1169,18 @@ function renderFootball(d){
   const sum = document.getElementById('fbSummary');
   const body = document.getElementById('fbMatchBody');
   const tickets = document.getElementById('fbTickets');
-  sum.innerHTML = `Generat: ${esc(d.generated_at||'')} · plaja ${d.days_window} zile · meciuri extrase: <b>${d.total_extracted}</b> · in interval: <b>${d.in_window}</b>`;
+  const skipped = (d.skipped_no_data!=null) ? ` · sarite (fara istoric real): <b>${d.skipped_no_data}</b>` : '';
+  const analyzed = (d.analyzed!=null) ? d.analyzed : (d.matches? d.matches.length : 0);
+  sum.innerHTML = `Generat: ${esc(d.generated_at||'')} · plaja ${d.days_window} zile · meciuri extrase: <b>${d.total_extracted}</b> · in interval: <b>${d.in_window}</b> · analizate: <b>${analyzed}</b>${skipped}`;
   if(!d.matches || !d.matches.length){
-    body.innerHTML = '<tr><td colspan="11" style="color:var(--muted)">Niciun meci in intervalul ales. Mareste plaja de zile sau verifica linkurile ligilor.</td></tr>';
+    body.innerHTML = '<tr><td colspan="11" style="color:var(--muted)">Niciun meci analizat. Fie nu sunt meciuri in intervalul ales, fie meciurile gasite nu au istoric real suficient (nu inventam date). Mareste plaja de zile sau verifica linkurile ligilor.</td></tr>';
     tickets.innerHTML = '';
     card.style.display = 'block'; return;
   }
   body.innerHTML = d.matches.map(m => {
     const p = m.probs || {};
-    const syn = m.used_synthetic_history ? '<span class="badge-syn">istoric sintetic</span>' : '';
     return `<tr>
-      <td>${esc(m.match)}${syn}</td>
+      <td>${esc(m.match)}</td>
       <td>${esc(m.league)}</td>
       <td>${esc(m.kickoff||'')}</td>
       <td class="num">${pct(p.home_win||0)}</td>
