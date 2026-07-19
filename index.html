@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google-adsense-account" content="ca-pub-2979775674052404">
-<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml"> 
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
-     crossorigin="anonymous"></script>
-<script async custom-element="amp-auto-ads"
-        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
-</script>
 <title>Simulator complet Loto 6/49 - toate modurile de joc</title>
 <style>
   :root{
@@ -99,6 +93,27 @@
   .vargrid label input[type=number]{width:100%}
   .vargrid label.chk{flex-direction:row;align-items:center;gap:7px;font-size:12.5px;color:var(--txt);grid-column:1/-1}
   .vargrid label.chk input{width:auto}
+  /* ---- Tab-uri (Loto / Fotbal) ---- */
+  .tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border:1px solid var(--line);border-radius:8px 8px 0 0;background:var(--panel2);color:var(--txt);cursor:pointer;font-size:14px;font-weight:600;transition:.12s}
+  .tab:hover{border-color:var(--accent)}
+  .tab.active{background:var(--accent);color:#11161c;border-color:var(--accent)}
+  .tabpane{display:none}
+  .tabpane.active{display:block}
+  /* ---- Fotbal ---- */
+  table.lg{width:100%;border-collapse:collapse;font-size:13px}
+  table.lg th,table.lg td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:middle}
+  table.lg th{background:var(--panel2);color:var(--accent);font-size:12px}
+  table.lg input[type=text]{width:100%;box-sizing:border-box}
+  .lg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  .ticket{border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px;background:var(--panel2)}
+  .ticket h3{margin:0 0 4px;font-size:15px;color:var(--accent)}
+  .ticket .style{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .ticket .tot{margin-top:10px;font-size:13px}
+  .ticket .tot b{color:var(--accent)}
+  .fb-note{background:rgba(56,139,253,.12);border:1px solid var(--blue);color:#a9c7ff;padding:10px 12px;border-radius:8px;font-size:13px;margin-top:12px}
+  .fb-ok{background:rgba(63,185,80,.12);border:1px solid var(--green);color:#9fe0ad;padding:8px 11px;border-radius:8px;font-size:12.5px;margin-top:10px}
+  .badge-syn{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:6px;background:rgba(163,113,247,.18);color:var(--purple);margin-left:6px}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
      crossorigin="anonymous"></script>
@@ -106,12 +121,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-<amp-auto-ads type="adsense"
-        data-ad-client="ca-pub-2979775674052404">
-</amp-auto-ads>
 <header>
-  <h1>Simulator complet Loto 6/49</h1>
-  <p>Predictie statistica (motor combinat) · joc simplu · combinare completa (7-24 numere) · scheme reduse predefinite (cod 48-59) · premii, probabilitati si comparatie</p>
+  <h1>Simulator complet Loto 6/49 &amp; Analizor pariuri fotbal</h1>
+  <p>Predictie statistica Loto (motor combinat) · scheme reduse · premii si taxe · plus analizor de pariuri fotbal (model Poisson) cu ligi editabile</p>
+  <div class="tabs">
+    <button class="tab active" id="tabBtnLoto" onclick="showTab('loto')">Loto 6/49</button>
+    <button class="tab" id="tabBtnFotbal" onclick="showTab('fotbal')">Pariuri fotbal</button>
+  </div>
 </header>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2979775674052404"
      crossorigin="anonymous"></script>
@@ -126,6 +142,8 @@
      (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
 <div class="wrap">
+
+<div class="tabpane active" id="tab-loto">
 
   <div class="card" id="predCard">
     <h2>0. Predictie statistica (motor combinat, seed fix)</h2>
@@ -352,6 +370,61 @@
   </div>
 
   <div class="footer" id="footer"></div>
+
+</div><!-- /tab-loto -->
+
+<div class="tabpane" id="tab-fotbal">
+
+  <div class="card">
+    <h2>Analizor pariuri fotbal (model Poisson)</h2>
+    <div class="sub">Extrage meciurile din ligile de mai jos (sursa: Flashscore), aplica un model Poisson + forma echipelor + accidentari si propune 3 bilete. Adaptat din scriptul "Football Betting Analyzer" by Costin Picu.</div>
+    <div id="fbEnvNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Ligi si linkuri (editabile, salvate pe server)</h2>
+    <div class="sub">Modifica numele sau URL-ul, adauga sau sterge ligi. Apasa "Salveaza ligile" ca modificarile sa fie pastrate pe server (le vede oricine intra).</div>
+    <div class="tscroll">
+      <table class="lg">
+        <thead><tr><th style="width:26%">Nume liga</th><th>URL Flashscore (pagina de meciuri)</th><th style="width:70px">Actiuni</th></tr></thead>
+        <tbody id="lgBody"><tr><td colspan="3" style="color:var(--muted)">Se incarca ligile...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="lg-actions">
+      <button class="ghost" onclick="addLeagueRow()">+ Adauga liga</button>
+      <button onclick="saveLeagues()">Salveaza ligile</button>
+      <button class="ghost" onclick="resetLeagues()">Revino la ligile default</button>
+      <span id="lgStatus" style="font-size:12.5px;color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Parametri analiza</h2>
+    <div class="vargrid">
+      <label>Plaja de zile (de azi inainte)
+        <input id="fbDays" type="number" min="1" max="14" value="3">
+      </label>
+    </div>
+    <div class="note">Default 3 zile (ca in scriptul original). Se iau meciurile din intervalul de la acum-2h pana la acum + plaja aleasa.</div>
+    <div class="lg-actions">
+      <button id="fbAnalyzeBtn" onclick="runFootball()">Analizeaza meciurile</button>
+      <span id="fbStatus" style="font-size:12.5px;color:var(--muted)"></span>
+    </div>
+    <div class="warn" id="fbWarn"></div>
+  </div>
+
+  <div class="card" id="fbResultCard" style="display:none">
+    <h2>Rezultate analiza</h2>
+    <div class="sub" id="fbSummary"></div>
+    <div class="tscroll"><table id="fbMatchTable">
+      <thead><tr><th>Meci</th><th>Liga</th><th>Ora</th><th class="num">1</th><th class="num">X</th><th class="num">2</th><th class="num">O2.5</th><th class="num">BTTS</th><th>Pont 1X2</th><th>Pont goluri</th><th class="num">Incredere</th></tr></thead>
+      <tbody id="fbMatchBody"></tbody>
+    </table></div>
+    <div id="fbTickets"></div>
+    <div class="note" style="margin-top:14px">Atentie: pariurile implica risc. Model statistic informativ, NU garanteaza castig. Istoricul echipelor poate fi partial sintetic (marcat cu eticheta "istoric sintetic") cand nu exista date reale. Joaca responsabil, 18+.</div>
+  </div>
+
+</div><!-- /tab-fotbal -->
 
 </div>
 
@@ -990,6 +1063,177 @@ loadPayConfig().then(handlePaymentReturn);
   const nEl = document.getElementById('varN');
   if(nEl){ nEl.addEventListener('input', refreshPriceHint); nEl.addEventListener('change', refreshPriceHint); }
 })();
+
+/* ==================== TAB-URI ==================== */
+function showTab(which){
+  const isLoto = which === 'loto';
+  document.getElementById('tab-loto').classList.toggle('active', isLoto);
+  document.getElementById('tab-fotbal').classList.toggle('active', !isLoto);
+  document.getElementById('tabBtnLoto').classList.toggle('active', isLoto);
+  document.getElementById('tabBtnFotbal').classList.toggle('active', !isLoto);
+  if(!isLoto && !window._fbLoaded){ window._fbLoaded = true; loadLeagues(); }
+}
+
+/* ==================== FOTBAL ==================== */
+const FB_DEFAULT_LEAGUES = [
+  {name:'Romania', url:'https://www.flashscore.ro/fotbal/romania/superliga/'},
+  {name:'Cupa mondiala', url:'https://www.flashscore.ro/fotbal/lume/cupa-mondiala/meciuri/'}
+];
+let FB_SCRAPE_AVAILABLE = false;
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function lgRowHtml(name, url){
+  return `<tr>
+    <td><input type="text" class="lg-name" value="${esc(name)}" placeholder="Ex: Romania"></td>
+    <td><input type="text" class="lg-url" value="${esc(url)}" placeholder="https://www.flashscore.ro/fotbal/..."></td>
+    <td><button class="ghost" style="padding:5px 10px;font-size:12px" onclick="this.closest('tr').remove()">Sterge</button></td>
+  </tr>`;
+}
+function renderLeagues(list){
+  const b = document.getElementById('lgBody');
+  if(!list || !list.length){ b.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">Nicio liga. Adauga una.</td></tr>'; return; }
+  b.innerHTML = list.map(l => lgRowHtml(l.name, l.url)).join('');
+}
+function addLeagueRow(){
+  const b = document.getElementById('lgBody');
+  if(b.querySelector('td[colspan]')) b.innerHTML = '';
+  b.insertAdjacentHTML('beforeend', lgRowHtml('', ''));
+}
+function collectLeagues(){
+  const rows = document.querySelectorAll('#lgBody tr');
+  const out = [];
+  rows.forEach(tr => {
+    const n = tr.querySelector('.lg-name'); const u = tr.querySelector('.lg-url');
+    if(!n || !u) return;
+    const name = n.value.trim(), url = u.value.trim();
+    if(name && url) out.push({name, url});
+  });
+  return out;
+}
+function resetLeagues(){ renderLeagues(FB_DEFAULT_LEAGUES.map(x => Object.assign({}, x))); document.getElementById('lgStatus').textContent = 'Ligi default incarcate (neselvate inca).'; }
+
+function setEnvNote(){
+  const el = document.getElementById('fbEnvNote');
+  if(FB_SCRAPE_AVAILABLE){
+    el.innerHTML = '<div class="fb-ok">Extragerea reala din Flashscore este DISPONIBILA pe acest server. Poti rula analiza completa.</div>';
+  } else {
+    el.innerHTML = '<div class="fb-note"><b>Nota:</b> Pe acest gazduire (pplx.app) extragerea meciurilor din Flashscore NU este disponibila, pentru ca are nevoie de un browser automat (Playwright + Chromium) care nu poate fi instalat aici. Poti edita si salva ligile + plaja de zile de aici. Pentru analiza reala, ruleaza aplicatia pe Render (unde poti instala Chromium). Interfata si datele salvate functioneaza in ambele locuri.</div>';
+  }
+}
+
+async function loadLeagues(){
+  const st = document.getElementById('lgStatus');
+  st.textContent = 'Se incarca...';
+  try{
+    const r = await fetch(`${PRED_API}/api/football/leagues`);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    renderLeagues(d.leagues && d.leagues.length ? d.leagues : FB_DEFAULT_LEAGUES);
+    if(typeof d.default_days_window === 'number') document.getElementById('fbDays').value = d.default_days_window;
+    FB_SCRAPE_AVAILABLE = !!d.scrape_available;
+    setEnvNote();
+    st.textContent = 'Ligi incarcate de pe server.';
+  }catch(e){
+    renderLeagues(FB_DEFAULT_LEAGUES.map(x => Object.assign({}, x)));
+    FB_SCRAPE_AVAILABLE = false; setEnvNote();
+    st.textContent = 'Serverul nu a raspuns; s-au incarcat ligile default.';
+  }
+}
+
+async function saveLeagues(){
+  const st = document.getElementById('lgStatus');
+  const leagues = collectLeagues();
+  if(!leagues.length){ st.textContent = 'Adauga cel putin o liga valida (nume + URL).'; return; }
+  st.textContent = 'Se salveaza...';
+  try{
+    const r = await fetch(`${PRED_API}/api/football/leagues`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({leagues})
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    renderLeagues(d.leagues);
+    st.textContent = 'Salvat pe server (' + (d.leagues ? d.leagues.length : 0) + ' ligi).';
+  }catch(e){
+    st.textContent = 'Nu s-a putut salva pe server (probabil gazduire fara scriere persistenta). Editarile raman doar in aceasta pagina.';
+  }
+}
+
+function pct(x){ return (x*100).toFixed(0)+'%'; }
+function od(x){ return (x==null?'-':Number(x).toFixed(2)); }
+
+function renderFootball(d){
+  const card = document.getElementById('fbResultCard');
+  const sum = document.getElementById('fbSummary');
+  const body = document.getElementById('fbMatchBody');
+  const tickets = document.getElementById('fbTickets');
+  sum.innerHTML = `Generat: ${esc(d.generated_at||'')} · plaja ${d.days_window} zile · meciuri extrase: <b>${d.total_extracted}</b> · in interval: <b>${d.in_window}</b>`;
+  if(!d.matches || !d.matches.length){
+    body.innerHTML = '<tr><td colspan="11" style="color:var(--muted)">Niciun meci in intervalul ales. Mareste plaja de zile sau verifica linkurile ligilor.</td></tr>';
+    tickets.innerHTML = '';
+    card.style.display = 'block'; return;
+  }
+  body.innerHTML = d.matches.map(m => {
+    const p = m.probs || {};
+    const syn = m.used_synthetic_history ? '<span class="badge-syn">istoric sintetic</span>' : '';
+    return `<tr>
+      <td>${esc(m.match)}${syn}</td>
+      <td>${esc(m.league)}</td>
+      <td>${esc(m.kickoff||'')}</td>
+      <td class="num">${pct(p.home_win||0)}</td>
+      <td class="num">${pct(p.draw||0)}</td>
+      <td class="num">${pct(p.away_win||0)}</td>
+      <td class="num">${pct(p.over_25||0)}</td>
+      <td class="num">${pct(p.btts_yes||0)}</td>
+      <td>${esc(m.main_pick)} <span style="color:var(--muted)">(${od(m.main_odds)})</span></td>
+      <td>${esc(m.goals_pick)} <span style="color:var(--muted)">(${od(m.goals_odds)})</span></td>
+      <td class="num"><b>${m.confidence}%</b></td>
+    </tr>`;
+  }).join('');
+  tickets.innerHTML = (d.tickets||[]).map(t => {
+    const rows = (t.picks||[]).map(p => `<tr><td>${esc(p.match)}</td><td>${esc(p.pick)}</td><td class="num">${pct(p.prob||0)}</td><td class="num">${od(p.odds)}</td></tr>`).join('');
+    return `<div class="ticket">
+      <h3>${esc(t.name)}</h3>
+      <div class="style">${esc(t.style)}</div>
+      <div class="tscroll"><table class="lg"><thead><tr><th>Meci</th><th>Pont</th><th class="num">Prob.</th><th class="num">Cota</th></tr></thead><tbody>${rows||'<tr><td colspan=4 style="color:var(--muted)">Fara selectii</td></tr>'}</tbody></table></div>
+      <div class="tot">Cota totala: <b>${od(t.total_odds)}</b> · probabilitate combinata (model): <b>${t.combined_prob}%</b></div>
+    </div>`;
+  }).join('');
+  card.style.display = 'block';
+}
+
+async function runFootball(){
+  const btn = document.getElementById('fbAnalyzeBtn');
+  const st = document.getElementById('fbStatus');
+  const warn = document.getElementById('fbWarn');
+  warn.style.display = 'none';
+  const days = Math.max(1, Math.min(14, parseInt(document.getElementById('fbDays').value||'3',10)));
+  const leagues = collectLeagues();
+  if(!leagues.length){ warn.textContent='Adauga cel putin o liga (nume + URL) inainte de analiza.'; warn.style.display='block'; return; }
+  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la un minut)...';
+  try{
+    const r = await fetch(`${PRED_API}/api/football/analyze`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days_window:days, leagues})
+    });
+    const d = await r.json();
+    if(r.status === 503 || d.error === 'scrape_unavailable'){
+      FB_SCRAPE_AVAILABLE = false; setEnvNote();
+      warn.innerHTML = esc(d.message || 'Extragerea nu este disponibila pe acest server.');
+      warn.style.display='block';
+      st.textContent = '';
+      return;
+    }
+    if(!r.ok || d.error){ throw new Error(d.message || ('HTTP '+r.status)); }
+    renderFootball(d);
+    st.textContent = 'Gata.';
+  }catch(e){
+    warn.textContent = 'Eroare la analiza: ' + (e.message||e);
+    warn.style.display='block';
+    st.textContent = '';
+  }finally{
+    btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>

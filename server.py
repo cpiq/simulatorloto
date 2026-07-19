@@ -492,12 +492,12 @@ def predict():
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"
     # ponderi scor (se normalizeaza ca sa insumeze 1)
-    w_freq = max(0.0, float(request.args.get("wfreq", 0.333)))
-    w_delay = max(0.0, float(request.args.get("wdelay", 0.333)))
-    w_pair = max(0.0, float(request.args.get("wpair", 0.333)))
+    w_freq = max(0.0, float(request.args.get("wfreq", 0.4)))
+    w_delay = max(0.0, float(request.args.get("wdelay", 0.3)))
+    w_pair = max(0.0, float(request.args.get("wpair", 0.3)))
     wsum = w_freq + w_delay + w_pair
     if wsum <= 0:
-        w_freq, w_delay, w_pair, wsum = 0.333, 0.333, 0.333, 1.0
+        w_freq, w_delay, w_pair, wsum = 0.4, 0.3, 0.3, 1.0
     w_freq, w_delay, w_pair = w_freq / wsum, w_delay / wsum, w_pair / wsum
 
     # extra9 nu poate depasi pool9 - 6 (raman macar 6 fixe)
@@ -564,9 +564,87 @@ def predict():
     })
 
 
+# ==================== FOOTBALL (analizor pariuri) ====================
+try:
+    import football as _fb
+except Exception:
+    _fb = None
+
+
+@app.route("/api/football/leagues", methods=["GET"])
+def fb_get_leagues():
+    """Ligile curente + plaja de zile default + daca extragerea reala e disponibila."""
+    if _fb is None:
+        return jsonify({"error": "Modulul football nu este disponibil."}), 500
+    return jsonify({
+        "leagues": _fb.load_leagues(),
+        "default_days_window": _fb.DEFAULT_DAYS_WINDOW,
+        "scrape_available": _fb.scrape_available(),
+    })
+
+
+@app.route("/api/football/leagues", methods=["POST"])
+def fb_save_leagues():
+    """Salveaza (suprascrie) lista de ligi pe server. Body: {\"leagues\":[{name,url},...]}."""
+    if _fb is None:
+        return jsonify({"error": "Modulul football nu este disponibil."}), 500
+    body = request.get_json(silent=True) or {}
+    leagues = body.get("leagues", [])
+    if not isinstance(leagues, list):
+        return jsonify({"error": "Format invalid: 'leagues' trebuie sa fie o lista."}), 400
+    saved = _fb.save_leagues(leagues)
+    return jsonify({"leagues": saved, "saved": True})
+
+
+@app.route("/api/football/analyze", methods=["POST"])
+def fb_analyze():
+    """Ruleaza analiza. Body optional: {\"days_window\":3, \"leagues\":[...]}.
+    Daca 'leagues' lipseste, foloseste ligile salvate pe server.
+    Daca extragerea reala (Playwright) nu e disponibila, intoarce 503 cu mesaj clar."""
+    if _fb is None:
+        return jsonify({"error": "Modulul football nu este disponibil."}), 500
+    body = request.get_json(silent=True) or {}
+    try:
+        days = int(body.get("days_window", _fb.DEFAULT_DAYS_WINDOW))
+    except Exception:
+        days = _fb.DEFAULT_DAYS_WINDOW
+    days = max(1, min(days, 14))
+    leagues = body.get("leagues")
+    if not isinstance(leagues, list) or not leagues:
+        leagues = _fb.load_leagues()
+
+    if not _fb.scrape_available():
+        return jsonify({
+            "error": "scrape_unavailable",
+            "message": (
+                "Extragerea meciurilor din Flashscore are nevoie de un browser automat "
+                "(Playwright + Chromium), care nu este instalat pe acest server. "
+                "Ruleaza aplicatia pe Render, unde poti instala Chromium, ca sa obtii "
+                "analiza reala. Ligile si plaja de zile de mai sus se salveaza si acolo."
+            ),
+            "scrape_available": False,
+            "days_window": days,
+            "leagues": leagues,
+        }), 503
+
+    try:
+        data = _fb.analyze(leagues, days_window=days)
+        data["scrape_available"] = True
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": "analyze_failed", "message": str(e)}), 500
+
+
+@app.route("/football.py")
+def _hide_football_source():
+    # Nu servim codul sursa ca fisier static.
+    return ("Not found", 404)
+
+
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
+
 
 
 @app.route("/schemes.js")
