@@ -529,40 +529,14 @@ class BettingAnalyzer:
                 filtered.append(m)
         return filtered, len(all_matches)
 
-    def _synthetic_history(self, team, n=24):
-        np.random.seed(abs(hash(team)) % (2 ** 31))
-        base = datetime.now() - timedelta(days=n * 7)
-        opp = ["Team A", "Team B", "Team C", "Team D", "Team E"]
-        out = []
-        for i in range(n):
-            hg = int(np.random.poisson(1.5))
-            ag = int(np.random.poisson(1.1))
-            res = "H" if hg > ag else ("A" if ag > hg else "D")
-            out.append({
-                "date": base + timedelta(days=i * 7),
-                "home_team": team if i % 2 == 0 else opp[i % 5],
-                "away_team": opp[i % 5] if i % 2 == 0 else team,
-                "home_goals": hg, "away_goals": ag, "result": res,
-            })
-        return out
-
     def analyze_match(self, match):
         home, away = match["home_team"], match["away_team"]
         used_synthetic = False
         h_url, a_url = match.get("home_team_url"), match.get("away_team_url")
-        if not h_url or not a_url:
-            used_synthetic = True
-            h_hist = self._synthetic_history(home)
-            a_hist = self._synthetic_history(away)
-        else:
-            h_hist = self.history_scraper.fetch_team_history(home, h_url)
-            a_hist = self.history_scraper.fetch_team_history(away, a_url)
-            if not h_hist:
-                used_synthetic = True
-                h_hist = self._synthetic_history(home)
-            if not a_hist:
-                used_synthetic = True
-                a_hist = self._synthetic_history(away)
+    
+        h_hist = self.history_scraper.fetch_team_history(home, h_url)
+        a_hist = self.history_scraper.fetch_team_history(away, a_url)
+         
         all_hist = sorted(h_hist + a_hist, key=lambda x: x["date"])
         model = PoissonModel.fit(all_hist)
         mu_h, mu_a = PoissonModel.predict_goals(model, home, away)
