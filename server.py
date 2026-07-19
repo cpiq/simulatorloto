@@ -627,10 +627,8 @@ def fb_analyze():
         return jsonify({
             "error": "scrape_unavailable",
             "message": (
-                "Extragerea meciurilor din Flashscore are nevoie de un browser automat "
-                "(Playwright + Chromium), care nu este instalat pe acest server. "
-                "Ruleaza aplicatia pe Render, unde poti instala Chromium, ca sa obtii "
-                "analiza reala. Ligile si plaja de zile de mai sus se salveaza si acolo."
+                "Extragerea meciurilor nu este disponibila pe acest server: lipseste "
+                "modulul Python 'requests'. Instaleaza dependintele din requirements.txt."
             ),
             "scrape_available": False,
             "days_window": days,
@@ -657,10 +655,28 @@ def fb_debug():
         leagues = _fb.load_leagues()
     out = {
         "scrape_available": bool(_fb.scrape_available()),
+        "browser_fallback_available": bool(_fb.browser_available()),
+        "feed_inline": [],
         "playwright_import": None,
         "chromium_launch": None,
         "leagues": [],
     }
+    # 0) calea RAPIDA (feed inline, fara browser) - cea folosita in mod normal
+    try:
+        fx = _fb.FixturesScraper()
+        for lg in leagues:
+            try:
+                target = fx.fixtures_url(lg.get("url") or "")
+                fast = fx._feed.fixtures_from_feed(lg.get("name"), target)
+                out["feed_inline"].append({
+                    "name": lg.get("name"),
+                    "feed_gasit": fast is not None,
+                    "meciuri": len(fast) if fast is not None else 0,
+                })
+            except Exception as e:
+                out["feed_inline"].append({"name": lg.get("name"), "error": f"{type(e).__name__}: {e}"})
+    except Exception as e:
+        out["feed_inline"] = f"{type(e).__name__}: {e}"
     # test import + launch separat, ca sa stim exact unde pica
     try:
         from playwright.sync_api import sync_playwright  # noqa

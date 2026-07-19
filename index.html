@@ -1100,7 +1100,7 @@ function showTab(which){
 /* ==================== FOTBAL ==================== */
 const FB_DEFAULT_LEAGUES = [
   {name:'Romania', url:'https://www.flashscore.ro/fotbal/romania/superliga/'}
-  ];
+];
 let FB_SCRAPE_AVAILABLE = false;
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1138,9 +1138,9 @@ function resetLeagues(){ renderLeagues(FB_DEFAULT_LEAGUES.map(x => Object.assign
 function setEnvNote(){
   const el = document.getElementById('fbEnvNote');
   if(FB_SCRAPE_AVAILABLE){
-    el.innerHTML = '<div class="fb-ok">Extragerea reala din Flashscore este DISPONIBILA pe acest server. Poti rula analiza completa.</div>';
+    el.innerHTML = '<div class="fb-ok">Extragerea reala din Flashscore este DISPONIBILA pe acest server (citire directa, fara browser). Poti rula analiza completa.</div>';
   } else {
-    el.innerHTML = '<div class="fb-note"><b>Nota:</b> Pe acest gazduire (pplx.app) extragerea meciurilor din Flashscore NU este disponibila, pentru ca are nevoie de un browser automat (Playwright + Chromium) care nu poate fi instalat aici. Poti edita si salva ligile + plaja de zile de aici. Pentru analiza reala, ruleaza aplicatia pe Render (unde poti instala Chromium). Interfata si datele salvate functioneaza in ambele locuri.</div>';
+    el.innerHTML = '<div class="fb-note"><b>Nota:</b> Extragerea meciurilor nu este disponibila pe acest server (lipsesc dependintele Python). Poti edita si salva ligile + plaja de zile de aici; pentru analiza reala instaleaza dependintele din requirements.txt.</div>';
   }
 }
 
@@ -1255,7 +1255,7 @@ async function runFootball(){
   const days = Math.max(1, Math.min(14, parseInt(document.getElementById('fbDays').value||'3',10)));
   const leagues = collectLeagues();
   if(!leagues.length){ warn.textContent='Adauga cel putin o liga (nume + URL) inainte de analiza.'; warn.style.display='block'; return; }
-  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la 9 minute)...';
+  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la 5 minute)...';
   try{
     const r = await fetch(`${PRED_API}/api/football/analyze`, {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days_window:days, leagues})

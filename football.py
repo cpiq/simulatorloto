@@ -20,8 +20,11 @@ deci este partajata (o vede oricine intra pe acelasi server).
 """
 
 import os
+import re
 import json
+import time
 import threading
+import requests
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -113,13 +116,145 @@ def save_leagues(leagues):
 # Detectare Playwright (extragere reala) - optional
 # ------------------------------------------------------------------
 def scrape_available():
-    """True doar daca putem folosi Playwright (browser automat) pe acest server."""
+    """True daca putem extrage date reale de pe Flashscore.
+    Calea RAPIDA (feed-ul inline din HTML) are nevoie doar de 'requests',
+    deci merge pe orice gazduire. Playwright ramane doar FALLBACK optional
+    (daca Flashscore renunta la feed-ul inline)."""
     try:
-        import playwright  # noqa: F401
+        import requests  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def browser_available():
+    """True daca exista si fallback-ul cu browser (Playwright + Chromium)."""
+    try:
         from playwright.sync_api import sync_playwright  # noqa: F401
         return True
     except Exception:
         return False
+
+
+# ------------------------------------------------------------------
+# CALEA RAPIDA: feed-ul inline Flashscore (fara browser)
+# ------------------------------------------------------------------
+class FeedFetcher:
+    """Ia paginile Flashscore cu HTTP simplu (requests) si citeste feed-ul
+    inline `cjs.initialFeeds[...]` din HTML - EXACT aceleasi date pe care
+    JS-ul paginii le randeaza in tabel (sursa identica, zero date inventate).
+    Avantaje pe Render 0.1 CPU: fara Chromium => ~40x mai rapid per pagina
+    si memorie aproape zero. Formatul feed: campuri 'CHEIE\u00f7valoare' separate
+    cu '\u00ac', inregistrari separate cu '\u00ac~' (incep cu AA\u00f7<id meci>).
+    Chei folosite: AD=timestamp unix, AE/AF=nume gazde/oaspeti,
+    AG/AH=goluri, PX/PY=id echipa, WU/WV=slug echipa."""
+
+    def __init__(self, timeout_s=15):
+        self.timeout_s = timeout_s
+        self._s = requests.Session()
+        self._s.headers.update({
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Accept-Language": "ro-RO,ro;q=0.9,en;q=0.8",
+        })
+
+    def get_html(self, url):
+        try:
+            r = self._s.get(url, timeout=self.timeout_s)
+            if r.status_code == 200:
+                return r.text
+        except Exception:
+            pass
+        return ""
+
+    @staticmethod
+    def extract_feed(html, name):
+        """Intoarce textul feed-ului inline cu numele dat, sau None daca lipseste
+        (None => apelantul trece pe fallback-ul cu browser)."""
+        if not html:
+            return None
+        m = re.search(
+            r'cjs\.initialFeeds\["' + re.escape(name) + r'"\]\s*=\s*\{\s*data:\s*`([^`]*)`',
+            html)
+        return m.group(1) if m else None
+
+    @staticmethod
+    def parse_records(feed):
+        recs = []
+        for rec in (feed or "").split("\u00ac~"):
+            if not rec.startswith("AA\u00f7"):
+                continue
+            kv = {}
+            for p in rec.split("\u00ac"):
+                if "\u00f7" in p:
+                    k, _, v = p.partition("\u00f7")
+                    kv[k] = v
+            recs.append(kv)
+        return recs
+
+    def fixtures_from_feed(self, league_name, target_url):
+        """Meciurile viitoare direct din feed-ul inline al paginii /meciuri/.
+        Intoarce None daca feed-ul lipseste (=> fallback pe browser)."""
+        html = self.get_html(target_url)
+        feed = self.extract_feed(html, "summary-fixtures")
+        if feed is None:
+            return None
+        origin = "/".join(target_url.split("/")[:3])
+        matches = []
+        for kv in self.parse_records(feed):
+            home, away = kv.get("AE"), kv.get("AF")
+            if not home or not away:
+                continue
+            try:
+                match_dt = datetime.fromtimestamp(int(kv["AD"]))
+            except (KeyError, ValueError, OSError):
+                match_dt = None
+            h_url = (f"{origin}/echipa/{kv['WU']}/{kv['PX']}/"
+                     if kv.get("WU") and kv.get("PX") else None)
+            a_url = (f"{origin}/echipa/{kv['WV']}/{kv['PY']}/"
+                     if kv.get("WV") and kv.get("PY") else None)
+            matches.append({
+                "league": league_name,
+                "home_team": home,
+                "away_team": away,
+                "kickoff": match_dt.strftime("%d.%m. %H:%M") if match_dt else "",
+                "match_datetime": match_dt,
+                "home_team_url": h_url,
+                "away_team_url": a_url,
+            })
+        return matches
+
+    def history_from_feed(self, team_url, max_matches=24):
+        """Istoricul REAL al echipei din feed-ul inline al paginii /rezultate/.
+        Doar meciuri cu scor final; datele vin ca timestamp unix (exacte).
+        Intoarce None daca feed-ul lipseste (=> fallback pe browser)."""
+        url = team_url.rstrip("/") + "/rezultate/"
+        html = self.get_html(url)
+        feed = self.extract_feed(html, "summary-results")
+        if feed is None:
+            return None
+        hist = []
+        for kv in self.parse_records(feed)[:max_matches]:
+            home, away = kv.get("AE"), kv.get("AF")
+            if not home or not away:
+                continue
+            try:
+                hg, ag = int(kv["AG"]), int(kv["AH"])
+            except (KeyError, ValueError):
+                continue  # meci fara scor final (amanat/anulat) -> nu-l folosim
+            try:
+                d = datetime.fromtimestamp(int(kv["AD"]))
+            except (KeyError, ValueError, OSError):
+                continue  # fara data reala nu inventam nimic
+            res = "H" if hg > ag else ("A" if ag > hg else "D")
+            hist.append({
+                "date": d,
+                "home_team": home,
+                "away_team": away,
+                "home_goals": hg,
+                "away_goals": ag,
+                "result": res,
+            })
+        return hist
 
 
 # ------------------------------------------------------------------
@@ -162,6 +297,11 @@ class FixturesScraper:
         self._context = None
         self._page = None
         self._cookies_done = False
+        # calea rapida (requests + feed inline) - incercata INAINTE de browser
+        self._feed = FeedFetcher(timeout_s=min(timeout_s, 15))
+        # cand e True, _fetch_html deschide sesiunea persistenta la primul
+        # fallback si o LASA deschisa (analyze() o inchide la final)
+        self._lazy_persistent = False
 
     @staticmethod
     def _block_route(route):
@@ -265,8 +405,8 @@ class FixturesScraper:
         """Ia HTML-ul unei pagini. Refoloseste sesiunea daca e deschisa;
         altfel porneste si inchide un browser doar pentru acest apel.
         La orice eroare de pagina/browser, reporneste sesiunea O data si reincearca."""
-        ephemeral = self._page is None
-        if ephemeral:
+        ephemeral = self._page is None and not self._lazy_persistent
+        if self._page is None:
             self.open_session()
         try:
             try:
@@ -408,6 +548,11 @@ class FixturesScraper:
 
     def get_league_fixtures(self, league_name, url):
         target = self.fixtures_url(url)
+        # 1) calea RAPIDA: feed-ul inline, HTTP simplu (fara browser)
+        fast = self._feed.fixtures_from_feed(league_name, target)
+        if fast is not None:
+            return fast
+        # 2) FALLBACK: browser automat (doar daca feed-ul inline a disparut)
         return self.parse_fixtures(league_name, self.fetch_html(target))
 
 
@@ -419,6 +564,11 @@ class TeamHistoryScraper:
     def fetch_team_history(self, team_name, team_url):
         if not team_url:
             return []
+        # 1) calea RAPIDA: feed-ul inline (aceleasi date, fara browser)
+        fast = self._f._feed.history_from_feed(team_url)
+        if fast is not None:
+            return fast
+        # 2) FALLBACK: browser automat
         url = team_url.rstrip("/") + "/rezultate/"
         return self.parse_team_history(team_name, self._f.fetch_html(url))
 
@@ -591,10 +741,22 @@ class BettingAnalyzer:
         self._hist_cache = {}
 
     def _team_history_cached(self, team, url):
+        # 1) cache-ul rularii curente
         if url in self._hist_cache:
             return self._hist_cache[url]
+        # 2) cache-ul INTRE rulari (TTL 6h - istoricul nu se schimba des);
+        #    a doua analiza din aceeasi zi devine aproape instanta
+        now = time.time()
+        hit = _HIST_CACHE.get(url)
+        if hit and now - hit[0] < _HIST_TTL_S:
+            self._hist_cache[url] = hit[1]
+            return hit[1]
         hist = self.history_scraper.fetch_team_history(team, url)
         self._hist_cache[url] = hist
+        if hist:  # esecurile NU se tin in cache (reincercam data viitoare)
+            if len(_HIST_CACHE) >= _HIST_CACHE_MAX:
+                _HIST_CACHE.clear()
+            _HIST_CACHE[url] = (now, hist)
         return hist
 
     def load_matches(self):
@@ -734,16 +896,41 @@ class BettingAnalyzer:
         }
 
 
+# Cache-uri intre rulari (in memoria procesului; se golesc la restartul
+# workerului gunicorn - max-requests 20 - ceea ce le si plafoneaza natural).
+_HIST_CACHE = {}           # team_url -> (timestamp, istoric)
+_HIST_TTL_S = 6 * 3600     # 6 ore: istoricul unei echipe nu se schimba des
+_HIST_CACHE_MAX = 400
+_ANALYSIS_CACHE = {}       # (ligi, zile) -> (timestamp, rezultat complet)
+_ANALYSIS_TTL_S = 15 * 60  # 15 min: acelasi buton apasat repetat = instant
+_ANALYSIS_CACHE_MAX = 8
+
+
 def analyze(leagues, days_window=DEFAULT_DAYS_WINDOW):
-    """Ruleaza analiza completa. Presupune ca scrape_available() este True."""
+    """Ruleaza analiza completa. Presupune ca scrape_available() este True.
+    Ordinea incercarilor per pagina: feed inline (requests, rapid) ->
+    browser Playwright (fallback). Rezultatul intreg e tinut in cache 15 min."""
+    key = (tuple((str(ll.get("name", "")), str(ll.get("url", ""))) for ll in leagues),
+           int(days_window))
+    now = time.time()
+    hit = _ANALYSIS_CACHE.get(key)
+    if hit and now - hit[0] < _ANALYSIS_TTL_S:
+        res = dict(hit[1])
+        res["cached"] = True  # UI-ul poate arata ca e din cache (generated_at ramane cel real)
+        return res
     az = BettingAnalyzer(leagues, days_window=days_window)
-    # UN singur browser pentru toata analiza (fixtures + toate istoricele):
-    # lansarea Chromium e cel mai scump pas pe CPU mic - o facem o data.
-    az.scraper.open_session()
+    # Fallback-ul cu browser (daca feed-ul inline dispare) deschide O singura
+    # sesiune Chromium la primul apel si o refoloseste; o inchidem la final.
+    az.scraper._lazy_persistent = True
     try:
         matches, total = az.load_matches()
         in_window = len(matches)
         az.run_analysis(matches)
     finally:
         az.scraper.close_session()
-    return az.result(total, in_window_count=in_window)
+    res = az.result(total, in_window_count=in_window)
+    res["cached"] = False
+    if len(_ANALYSIS_CACHE) >= _ANALYSIS_CACHE_MAX:
+        _ANALYSIS_CACHE.clear()
+    _ANALYSIS_CACHE[key] = (now, res)
+    return res
