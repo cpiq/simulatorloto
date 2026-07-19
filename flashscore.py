@@ -173,13 +173,19 @@ class FixturesScraper:
             away = away_el.get_text(strip=True)
             time_txt = time_el.get_text(strip=True) if time_el else ""
 
+            # NOU: calculam data/ora completa a meciului
+            match_dt = None
+            if time_el:
+                raw_title = time_el.get("title")
+                raw_date = raw_title or time_txt
+                match_dt = self._parse_match_datetime(raw_date)
+
             if not home or not away:
                 continue
 
             home_url, away_url = None, None
             if row_link_el and row_link_el.has_attr("href"):
                 match_url = row_link_el["href"]
-                # match_url: .../meci/fotbal/<slug-home>/<slug-away>/?mid=...
                 parts = match_url.rstrip("/").split("/")
                 if len(parts) >= 2:
                     away_slug = parts[-1].split("?")[0]
@@ -193,12 +199,14 @@ class FixturesScraper:
                 "home_team": home,
                 "away_team": away,
                 "kickoff": time_txt,
+                "match_datetime": match_dt,   # <-- ACUM ESTE SETAT
                 "home_team_url": home_url,
                 "away_team_url": away_url,
                 "raw_score": "",
             })
 
         return matches
+
 
 
     def _parse_match_datetime(self, raw):
