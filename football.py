@@ -133,29 +133,74 @@ class FixturesScraper:
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            context = browser.new_context(user_agent=DEFAULT_USER_AGENT, locale="ro-RO")
+            # --no-sandbox: necesar pe multe host-uri Linux (Render/Docker), altfel
+            # Chromium poate porni gol sau esua silentios.
+            browser = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+            )
+            context = browser.new_context(
+                user_agent=DEFAULT_USER_AGENT,
+                locale="ro-RO",
+                viewport={"width": 1366, "height": 900},
+            )
             page = context.new_page()
             try:
                 page.goto(url, timeout=self.timeout_s * 1000, wait_until="domcontentloaded")
-                # 1) Accepta bannerul de cookies (altfel meciurile nu se incarca)
-                for sel in ("#onetrust-accept-btn-handler", "button#onetrust-accept-btn-handler"):
+                # 1) Accepta bannerul de cookies (mai multe variante de selector)
+                for sel in (
+                    "#onetrust-accept-btn-handler",
+                    "button#onetrust-accept-btn-handler",
+                    "button[aria-label='Sunt de acord']",
+                    "button:has-text('Sunt de acord')",
+                    "button:has-text('Accept')",
+                ):
                     try:
-                        page.click(sel, timeout=4000)
-                        page.wait_for_timeout(800)
+                        page.click(sel, timeout=3500)
+                        page.wait_for_timeout(700)
                         break
                     except Exception:
                         pass
-                # 2) Asteapta randurile de meciuri
-                try:
-                    page.wait_for_selector("[id^=g_]", timeout=self.timeout_s * 1000)
-                except Exception:
-                    page.wait_for_timeout(5000)
-                page.wait_for_timeout(1200)
+                # 2) Asteapta randurile de meciuri (retry cu scroll + networkidle)
+                got = False
+                for _ in range(3):
+                    try:
+                        page.wait_for_selector("[id^=g_]", timeout=8000)
+                        got = True
+                        break
+                    except Exception:
+                        try:
+                            page.mouse.wheel(0, 2000)
+                            page.wait_for_load_state("networkidle", timeout=6000)
+                        except Exception:
+                            page.wait_for_timeout(2500)
+                if not got:
+                    page.wait_for_timeout(3000)
+                page.wait_for_timeout(1000)
                 html = page.content()
             finally:
                 browser.close()
             return html
+
+    def debug_fetch(self, url):
+        """Diagnostic: intoarce URL-ul incercat, marimea HTML, nr de randuri g_,
+        titlul paginii si un fragment. Nu ridica exceptii."""
+        target = self.fixtures_url(url)
+        info = {"input_url": url, "fixtures_url": target, "error": None,
+                "html_len": 0, "g_count": 0, "parsed": 0, "title": "", "snippet": ""}
+        try:
+            html = self._fetch_html(target)
+            info["html_len"] = len(html)
+            low = html.lower()
+            info["g_count"] = low.count('id="g_')
+            soup = BeautifulSoup(html, "html.parser")
+            t = soup.find("title")
+            info["title"] = t.get_text(strip=True) if t else ""
+            info["parsed"] = len(self.parse_fixtures("?", html))
+            info["snippet"] = (soup.get_text(" ", strip=True)[:300]) if soup else ""
+        except Exception as e:
+            info["error"] = f"{type(e).__name__}: {e}"
+        return info
 
     @staticmethod
     def fixtures_url(url):

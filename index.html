@@ -408,8 +408,10 @@
     <div class="note">Default 3 zile (ca in scriptul original). Se iau meciurile din intervalul de la acum-2h pana la acum + plaja aleasa.</div>
     <div class="lg-actions">
       <button id="fbAnalyzeBtn" onclick="runFootball()">Analizeaza meciurile</button>
+      <button class="ghost" id="fbDebugBtn" onclick="runFootballDebug()">Diagnostic extragere</button>
       <span id="fbStatus" style="font-size:12.5px;color:var(--muted)"></span>
     </div>
+    <pre id="fbDebugOut" style="display:none;white-space:pre-wrap;background:#0b0e13;border:1px solid var(--line,#30363d);border-radius:8px;padding:12px;font-size:12px;color:#c9d1d9;margin-top:10px;max-height:340px;overflow:auto"></pre>
     <div class="warn" id="fbWarn"></div>
   </div>
 
@@ -1200,6 +1202,28 @@ function renderFootball(d){
     </div>`;
   }).join('');
   card.style.display = 'block';
+}
+
+async function runFootballDebug(){
+  const btn = document.getElementById('fbDebugBtn');
+  const st = document.getElementById('fbStatus');
+  const out = document.getElementById('fbDebugOut');
+  const leagues = collectLeagues();
+  btn.disabled = true; st.textContent = 'Diagnostic in curs (pana la un minut)...';
+  out.style.display = 'block'; out.textContent = 'Se ruleaza...';
+  try{
+    const r = await fetch(`${PRED_API}/api/football/debug`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({leagues})
+    });
+    const d = await r.json();
+    out.textContent = JSON.stringify(d, null, 2);
+    st.textContent = '';
+  }catch(e){
+    out.textContent = 'Eroare diagnostic: ' + (e.message||e);
+    st.textContent = '';
+  }finally{
+    btn.disabled = false;
+  }
 }
 
 async function runFootball(){

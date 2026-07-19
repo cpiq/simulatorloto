@@ -635,6 +635,47 @@ def fb_analyze():
         return jsonify({"error": "analyze_failed", "message": str(e)}), 500
 
 
+@app.route("/api/football/debug", methods=["POST", "GET"])
+def fb_debug():
+    """Diagnostic: arata exact ce vede serverul cand incearca extragerea.
+    Body optional: {\"leagues\":[...]}. Fara body, foloseste ligile salvate."""
+    if _fb is None:
+        return jsonify({"error": "Modulul football nu este disponibil."}), 500
+    body = request.get_json(silent=True) or {}
+    leagues = body.get("leagues")
+    if not isinstance(leagues, list) or not leagues:
+        leagues = _fb.load_leagues()
+    out = {
+        "scrape_available": bool(_fb.scrape_available()),
+        "playwright_import": None,
+        "chromium_launch": None,
+        "leagues": [],
+    }
+    # test import + launch separat, ca sa stim exact unde pica
+    try:
+        from playwright.sync_api import sync_playwright  # noqa
+        out["playwright_import"] = "ok"
+    except Exception as e:
+        out["playwright_import"] = f"{type(e).__name__}: {e}"
+    if out["playwright_import"] == "ok":
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as pw:
+                b = pw.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
+                b.close()
+            out["chromium_launch"] = "ok"
+        except Exception as e:
+            out["chromium_launch"] = f"{type(e).__name__}: {e}"
+    if out.get("chromium_launch") == "ok":
+        sc = _fb.FixturesScraper()
+        for lg in leagues:
+            try:
+                out["leagues"].append({"name": lg.get("name"), **sc.debug_fetch(lg.get("url"))})
+            except Exception as e:
+                out["leagues"].append({"name": lg.get("name"), "error": f"{type(e).__name__}: {e}"})
+    return jsonify(out)
+
+
 @app.route("/football.py")
 def _hide_football_source():
     # Nu servim codul sursa ca fisier static.
@@ -646,11 +687,9 @@ def index():
     return send_from_directory(".", "index.html")
 
 
-
 @app.route("/schemes.js")
 def schemes_js():
     return send_from_directory(".", "schemes.js", mimetype="application/javascript")
-
 app.route("/robots.txt")
 def robots_txt():
     return send_from_directory(app.root_path, "robots.txt")
@@ -658,6 +697,7 @@ def robots_txt():
 @app.route("/sitemap.xml")
 def sitemap_xml():
     return send_from_directory(app.root_path, "sitemap.xml")
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
