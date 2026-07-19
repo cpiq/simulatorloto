@@ -690,6 +690,7 @@ def index():
 @app.route("/schemes.js")
 def schemes_js():
     return send_from_directory(".", "schemes.js", mimetype="application/javascript")
+
 app.route("/robots.txt")
 def robots_txt():
     return send_from_directory(app.root_path, "robots.txt")
