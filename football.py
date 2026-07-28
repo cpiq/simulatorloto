@@ -56,9 +56,9 @@ _LEAGUES_LOCK = threading.Lock()
 # Valori default (exact cele din scriptul original)
 DEFAULT_LEAGUES = [
     {"name": "Romania", "url": "https://www.flashscore.ro/fotbal/romania/superliga/"},
-      {"name": "Champions", "url": "https://www.flashscore.ro/fotbal/europa/champions-league/"},
-  {"name": "EuropaL", "url": "https://www.flashscore.ro/fotbal/europa/europa-league/"},
-  {"name": "Conference", "url": "https://www.flashscore.ro/fotbal/europa/conference-league/"}
+    {"name": "Champions", "url": "https://www.flashscore.ro/fotbal/europa/champions-league/"},
+    {"name": "EuropaL", "url": "https://www.flashscore.ro/fotbal/europa/europa-league/"},
+    {"name": "Conference", "url": "https://www.flashscore.ro/fotbal/europa/conference-league/"}
 ]
 DEFAULT_DAYS_WINDOW = 3
 
