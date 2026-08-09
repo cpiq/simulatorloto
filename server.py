@@ -495,9 +495,9 @@ def predict():
         # marcam tokenul ca folosit (o singura generare per plata)
         rec["used"] = True
         _PAID_SESSIONS[sid] = rec
-    pool = _clamp(int(request.args.get("pool", 9)), 6, 49)
+    pool = _clamp(int(request.args.get("pool", 21)), 6, 49)
     extra9 = _clamp(int(request.args.get("extra9", 3)), 1, 10)
-    pool9 = _clamp(int(request.args.get("pool9", 12)), 6, 49)
+    pool9 = _clamp(int(request.args.get("pool9", 24)), 6, 49)
     seed = int(request.args.get("seed", SEED))
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"
