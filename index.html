@@ -154,10 +154,10 @@
           <input id="varN" type="number" min="1" max="50" value="6">
         </label>
         <label>Pool numere (top)
-          <input id="varPool" type="number" min="6" max="49" value="49">
+          <input id="varPool" type="number" min="6" max="49" value="6">
         </label>
         <label>Pool extindere
-          <input id="varPool9" type="number" min="6" max="49" value="49">
+          <input id="varPool9" type="number" min="6" max="49" value="9">
         </label>
         <label>Extra la extindere
           <input id="varExtra9" type="number" min="1" max="10" value="3">
@@ -845,7 +845,7 @@ function readVars(){
 }
 function resetVars(){
   const set=(id,val)=>document.getElementById(id).value=val;
-  set('varN',6);set('varPool',49);set('varPool9',49);set('varExtra9',3);set('varSeed',649);
+  set('varN',6);set('varPool',6);set('varPool9',9);set('varExtra9',3);set('varSeed',649);
   set('varWFreq',0.333);set('varWDelay',0.333);set('varWPair',0.333);
   document.getElementById('varFilter').checked=true;
 }
