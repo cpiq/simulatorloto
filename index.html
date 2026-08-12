@@ -309,9 +309,9 @@
     <div class="tscroll"><table>
       <thead><tr><th>Categorie</th><th>Ghicite</th><th>Premiu unitar (lei)</th><th class="num">Probabilitate / varianta simpla</th></tr></thead>
       <tbody>
-        <tr><td><b>Cat. I</b></td><td>6/6</td><td><input id="p1" type="number" value="30790000"></td><td class="num">1 : 13.983.816</td></tr>
-        <tr><td><b>Cat. II</b></td><td>5/6</td><td><input id="p2" type="number" value="68000"></td><td class="num">1 : 54.201</td></tr>
-        <tr><td><b>Cat. III</b></td><td>4/6</td><td><input id="p3" type="number" value="180"></td><td class="num">1 : 1.032</td></tr>
+        <tr><td><b>Cat. I</b></td><td>6/6</td><td><input id="p1" type="number" value="52000000"></td><td class="num">1 : 13.983.816</td></tr>
+        <tr><td><b>Cat. II</b></td><td>5/6</td><td><input id="p2" type="number" value="30000"></td><td class="num">1 : 54.201</td></tr>
+        <tr><td><b>Cat. III</b></td><td>4/6</td><td><input id="p3" type="number" value="400"></td><td class="num">1 : 1.032</td></tr>
         <tr><td><b>Cat. IV</b></td><td>3/6</td><td><input id="p4" type="number" value="50"></td><td class="num">1 : 57</td></tr>
       </tbody>
     </table></div>
@@ -328,7 +328,7 @@
     <div class="sub">Cat ramai net dupa impozitul pe castiguri din jocuri de noroc (barem progresiv in vigoare 2026, Legea 141/2025). Loteria Romana retine impozitul la sursa, la plata premiului.</div>
     <div class="btnrow">
       <span class="note">Castig brut (lei):</span>
-      <input id="taxGross" type="number" min="0" step="1" value="30790000" style="width:140px;text-align:right">
+      <input id="taxGross" type="number" min="0" step="1" value="52000000" style="width:140px;text-align:right">
       <button class="ghost" id="btnTaxJackpot" onclick="fillJackpot()">Foloseste jackpotul (Cat. I)</button>
       <button id="btnTaxCalc" onclick="calcTax()">Calculeaza</button>
     </div>
@@ -718,7 +718,7 @@ document.getElementById('footer').innerHTML=
   '<a href="https://www.loto.ro/loto-new/newLotoSiteNexioFinalVersion/web/app2.php/jocuri/649_si_noroc/cum_se_joaca/Scheme_reduse_predefinite.html" target="_blank">Scheme reduse predefinite</a>. '+
   'Cod 48 foloseste combinatiile OFICIALE publicate de Loteria Romana. Codurile 49, 50, 56, 57, 58, 59 folosesc scheme acoperitoare generate si validate matematic (fiecare reproduce cel putin garantia minima oficiala: cat. IV la 3 prinse, cat. III la 4 prinse) — nu sunt neaparat combinatiile interne exacte ale terminalului Loteriei, care nu sunt publice, dar produc aceleasi garantii pe categorii. '+
   'Pret varianta simpla 8 lei + taxa bilet 0,5 lei (<a href="https://www.loto.ro" target="_blank">loto.ro</a>). '+
-  'Premii implicite orientative: cat. I report ~30,79 mil. lei (11 iunie 2026), cat. II ~68.000 lei/castig; cat. III si IV variabile — inlocuieste cu valorile reale ale tragerii. '+
+  'Premii implicite orientative: cat. I report ~51 mil. lei (11 iunie 2026), cat. II ~40.000 lei/castig; cat. III si IV variabile — inlocuieste cu valorile reale ale tragerii. '+
   'Probabilitati 6/49: cat. I 1:13.983.816, cat. II 1:54.201, cat. III 1:1.032, cat. IV 1:57. Simulatorul ruleaza integral local in browser.';
 
 // ---------- PREDICTIE (backend live) ----------
