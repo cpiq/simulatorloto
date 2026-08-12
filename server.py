@@ -322,14 +322,14 @@ class Analyzer:
             ok += 1
         return ok >= 2
 
-    def gen_ticket(self, rng, size=6, pool=20):
+    def gen_ticket(self, rng, size=6, pool=9):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         nums = np.array([n for n, _ in ranked])
         w = np.array([s for _, s in ranked], float)
         w = np.ones_like(w) / len(w) if w.sum() == 0 else w / w.sum()
         return sorted(rng.choice(nums, size, replace=False, p=w).tolist())
 
-    def gen_tickets(self, rng, count=12, size=6, pool=20, use_filter=True):
+    def gen_tickets(self, rng, count=3, size=6, pool=9, use_filter=True):
         target = self.target_profile()
         seen = set()
         ordered = []
@@ -350,7 +350,7 @@ class Analyzer:
                 ordered.append(t)
         return target, [list(t) for t in ordered]
 
-    def extend_to_9(self, rng, ticket6, pool=22, extra=3):
+    def extend_to_9(self, rng, ticket6, pool=9, extra=3):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         existing = set(ticket6)
         nums = np.array([n for n, _ in ranked if n not in existing])
@@ -386,7 +386,7 @@ def api_config():
 @app.route("/api/price")
 def api_price():
     """Calcul de pret pentru un numar de bilete (informativ, pentru afisare)."""
-    n = _clamp(int(request.args.get("n", 12)), 1, 50)
+    n = _clamp(int(request.args.get("n", 3)), 1, 50)
     return jsonify(compute_price(n))
 
 
@@ -396,7 +396,7 @@ def create_checkout():
     if not PAYMENTS_ON:
         return jsonify({"error": "Plata nu este configurata pe server."}), 503
     data = request.get_json(silent=True) or {}
-    n = _clamp(int(data.get("n", 12)), 1, 50)
+    n = _clamp(int(data.get("n", 3)), 1, 50)
     pr = compute_price(n)
     if pr["total_bani"] <= 0:
         return jsonify({"error": "Acest numar de bilete este gratuit.", "price": pr}), 400
@@ -472,7 +472,7 @@ def _clamp(v, lo, hi):
 @app.route("/api/predict")
 def predict():
     # parametri reglabili din interfata (cu limite de siguranta)
-    n_bilete = _clamp(int(request.args.get("n", 12)), 1, 50)
+    n_bilete = _clamp(int(request.args.get("n", 3)), 1, 50)
 
     # --- Garda de plata pe server (nu se poate ocoli din browser) ---
     # Daca plata e activa si se cer mai multe bilete decat cele gratuite,
@@ -495,9 +495,9 @@ def predict():
         # marcam tokenul ca folosit (o singura generare per plata)
         rec["used"] = True
         _PAID_SESSIONS[sid] = rec
-    pool = _clamp(int(request.args.get("pool", 21)), 6, 49)
+    pool = _clamp(int(request.args.get("pool", 9)), 6, 49)
     extra9 = _clamp(int(request.args.get("extra9", 3)), 1, 10)
-    pool9 = _clamp(int(request.args.get("pool9", 24)), 6, 49)
+    pool9 = _clamp(int(request.args.get("pool9", 9)), 6, 49)
     seed = int(request.args.get("seed", SEED))
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"
