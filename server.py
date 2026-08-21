@@ -322,14 +322,14 @@ class Analyzer:
             ok += 1
         return ok >= 2
 
-    def gen_ticket(self, rng, size=6, pool=9):
+    def gen_ticket(self, rng, size=6, pool=7):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         nums = np.array([n for n, _ in ranked])
         w = np.array([s for _, s in ranked], float)
         w = np.ones_like(w) / len(w) if w.sum() == 0 else w / w.sum()
         return sorted(rng.choice(nums, size, replace=False, p=w).tolist())
 
-    def gen_tickets(self, rng, count=3, size=6, pool=9, use_filter=True):
+    def gen_tickets(self, rng, count=3, size=6, pool=7, use_filter=True):
         target = self.target_profile()
         seen = set()
         ordered = []
@@ -350,7 +350,7 @@ class Analyzer:
                 ordered.append(t)
         return target, [list(t) for t in ordered]
 
-    def extend_to_9(self, rng, ticket6, pool=9, extra=3):
+    def extend_to_9(self, rng, ticket6, pool=14, extra=3):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         existing = set(ticket6)
         nums = np.array([n for n, _ in ranked if n not in existing])
@@ -495,9 +495,9 @@ def predict():
         # marcam tokenul ca folosit (o singura generare per plata)
         rec["used"] = True
         _PAID_SESSIONS[sid] = rec
-    pool = _clamp(int(request.args.get("pool", 9)), 6, 49)
+    pool = _clamp(int(request.args.get("pool", 7)), 6, 49)
     extra9 = _clamp(int(request.args.get("extra9", 3)), 1, 10)
-    pool9 = _clamp(int(request.args.get("pool9", 9)), 6, 49)
+    pool9 = _clamp(int(request.args.get("pool9", 14)), 6, 49)
     seed = int(request.args.get("seed", SEED))
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"

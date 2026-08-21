@@ -154,25 +154,25 @@
           <input id="varN" type="number" min="1" max="50" value="3">
         </label>
         <label>Pool numere (top)
-          <input id="varPool" type="number" min="6" max="49" value="9">
+          <input id="varPool" type="number" min="6" max="49" value="7">
         </label>
         <label>Pool extindere
-          <input id="varPool9" type="number" min="6" max="49" value="9">
+          <input id="varPool9" type="number" min="6" max="49" value="14">
         </label>
         <label>Extra la extindere
-          <input id="varExtra9" type="number" min="1" max="10" value="3">
+          <input id="varExtra9" type="number" min="1" max="10" value="1">
         </label>
         <label>Seed (reproductibil)
           <input id="varSeed" type="number" value="649">
         </label>
         <label>Pondere frecventa
-          <input id="varWFreq" type="number" step="0.05" min="0" value="0.333">
+          <input id="varWFreq" type="number" step="0.05" min="0" value="0.4">
         </label>
         <label>Pondere intarziere
-          <input id="varWDelay" type="number" step="0.05" min="0" value="0.333">
+          <input id="varWDelay" type="number" step="0.05" min="0" value="0.3">
         </label>
         <label>Pondere perechi
-          <input id="varWPair" type="number" step="0.05" min="0" value="0.333">
+          <input id="varWPair" type="number" step="0.05" min="0" value="0.3">
         </label>
         <label class="chk">
           <input id="varFilter" type="checkbox" checked> Filtru de plauzibilitate (profil)
@@ -845,8 +845,8 @@ function readVars(){
 }
 function resetVars(){
   const set=(id,val)=>document.getElementById(id).value=val;
-  set('varN',3);set('varPool',9);set('varPool9',9);set('varExtra9',3);set('varSeed',649);
-  set('varWFreq',0.333);set('varWDelay',0.333);set('varWPair',0.333);
+  set('varN',3);set('varPool',7);set('varPool9',14);set('varExtra9',3);set('varSeed',649);
+  set('varWFreq',0.4);set('varWDelay',0.3);set('varWPair',0.3);
   document.getElementById('varFilter').checked=true;
 }
 
