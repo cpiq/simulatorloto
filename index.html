@@ -122,10 +122,12 @@
 </head>
 <body>
 <header>
-  <h1>Simulator complet Loto 6/49 &amp; Analizor pariuri fotbal</h1>
+  <h1>Simulator complet Loto (6/49 · 5/40 · Joker) &amp; Analizor pariuri fotbal</h1>
   <p>Predictie statistica Loto (motor combinat) · scheme reduse · premii si taxe · plus analizor de pariuri fotbal (model Poisson) cu ligi editabile</p>
   <div class="tabs">
     <button class="tab active" id="tabBtnLoto" onclick="showTab('loto')">Loto 6/49</button>
+    <button class="tab" id="tabBtnLoto540" onclick="showTab('loto540')">Loto 5/40</button>
+    <button class="tab" id="tabBtnJoker" onclick="showTab('joker')">Joker</button>
     <button class="tab" id="tabBtnFotbal" onclick="showTab('fotbal')">Pariuri fotbal</button>
   </div>
 </header>
@@ -218,9 +220,9 @@
         <div class="note">Probabilitatea ca o extragere de o anumita forma sa fie urmata de fiecare forma. low-heavy = majoritate numere &le;24, high-heavy = majoritate &ge;25.</div>
       </details>
 
-      <div class="sub" style="margin-top:18px"><b>12 bilete propuse (6 numere, seed fix 649)</b> &mdash; apasa "In simulator" ca sa testezi un bilet mai sus</div>
+      <div class="sub" style="margin-top:18px"><b id="predTicketsHead">Bilete propuse (6 numere)</b> &mdash; apasa "In simulator" ca sa testezi un bilet mai sus</div>
       <div class="tscroll"><table>
-        <thead><tr><th class="num">#</th><th>Bilet (6 nr)</th><th class="num">Suma</th><th class="num">I/P</th><th>Forma</th><th>Extindere la 9 numere</th><th></th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Bilet (6 nr)</th><th class="num">Suma</th><th class="num">I/P</th><th>Forma</th><th id="predExtHead">Extindere</th><th></th></tr></thead>
         <tbody id="predTickets"></tbody>
       </table></div>
       <div class="note" id="predDisclaimer"></div>
@@ -309,9 +311,9 @@
     <div class="tscroll"><table>
       <thead><tr><th>Categorie</th><th>Ghicite</th><th>Premiu unitar (lei)</th><th class="num">Probabilitate / varianta simpla</th></tr></thead>
       <tbody>
-        <tr><td><b>Cat. I</b></td><td>6/6</td><td><input id="p1" type="number" value="52000000"></td><td class="num">1 : 13.983.816</td></tr>
-        <tr><td><b>Cat. II</b></td><td>5/6</td><td><input id="p2" type="number" value="30000"></td><td class="num">1 : 54.201</td></tr>
-        <tr><td><b>Cat. III</b></td><td>4/6</td><td><input id="p3" type="number" value="400"></td><td class="num">1 : 1.032</td></tr>
+        <tr><td><b>Cat. I</b></td><td>6/6</td><td><input id="p1" type="number" value="30790000"></td><td class="num">1 : 13.983.816</td></tr>
+        <tr><td><b>Cat. II</b></td><td>5/6</td><td><input id="p2" type="number" value="68000"></td><td class="num">1 : 54.201</td></tr>
+        <tr><td><b>Cat. III</b></td><td>4/6</td><td><input id="p3" type="number" value="180"></td><td class="num">1 : 1.032</td></tr>
         <tr><td><b>Cat. IV</b></td><td>3/6</td><td><input id="p4" type="number" value="50"></td><td class="num">1 : 57</td></tr>
       </tbody>
     </table></div>
@@ -328,7 +330,7 @@
     <div class="sub">Cat ramai net dupa impozitul pe castiguri din jocuri de noroc (barem progresiv in vigoare 2026, Legea 141/2025). Loteria Romana retine impozitul la sursa, la plata premiului.</div>
     <div class="btnrow">
       <span class="note">Castig brut (lei):</span>
-      <input id="taxGross" type="number" min="0" step="1" value="52000000" style="width:140px;text-align:right">
+      <input id="taxGross" type="number" min="0" step="1" value="30790000" style="width:140px;text-align:right">
       <button class="ghost" id="btnTaxJackpot" onclick="fillJackpot()">Foloseste jackpotul (Cat. I)</button>
       <button id="btnTaxCalc" onclick="calcTax()">Calculeaza</button>
     </div>
@@ -368,6 +370,206 @@
   <div class="footer" id="footer"></div>
 
 </div><!-- /tab-loto -->
+
+<div class="tabpane" id="tab-540">
+
+  <div class="card" id="predCard540">
+    <h2>0. Predictie statistica Loto 5/40 (motor combinat, seed fix)</h2>
+    <div class="sub">Analizeaza intregul istoric Loto 5/40 (frecventa + frecventa recenta + intarziere + perechi + profil extragere + matrice Markov) si propune bilete de 5 numere, reproductibile. Istoricul se actualizeaza live la fiecare rulare (arhiva loto49.ro).</div>
+
+    <details class="varbox" open>
+      <summary>Variabile predictie (reglabile)</summary>
+      <div class="vargrid">
+        <label>Numar bilete
+          <input id="varN540" type="number" min="1" max="50" value="4">
+        </label>
+        <label>Pool numere (top)
+          <input id="varPool540" type="number" min="5" max="40" value="21">
+        </label>
+        <label>Pool extindere
+          <input id="varPool9540" type="number" min="5" max="40" value="21">
+        </label>
+        <label>Extra la extindere
+          <input id="varExtra9540" type="number" min="1" max="10" value="1">
+        </label>
+        <label>Seed (reproductibil)
+          <input id="varSeed540" type="number" value="540">
+        </label>
+        <label>Pondere frecventa
+          <input id="varWFreq540" type="number" step="0.05" min="0" value="0.4">
+        </label>
+        <label>Pondere frecventa recenta
+          <input id="varWRecent540" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label>Pondere intarziere
+          <input id="varWDelay540" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label>Pondere perechi
+          <input id="varWPair540" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label class="chk">
+          <input id="varFilter540" type="checkbox" checked> Filtru de plauzibilitate (profil)
+        </label>
+      </div>
+      <div class="note">Pool = din cate numere de top se aleg cele 5. Ponderile se normalizeaza automat sa insumeze 1. Extra la extindere &le; pool extindere &minus; 5. Pentru aceiasi parametri si acelasi istoric, biletele sunt mereu identice. <button class="ghost" style="padding:4px 9px;font-size:12px;margin-left:6px" onclick="resetVars540()">Reseteaza la valori implicite</button></div>
+    </details>
+
+    <div class="btnrow">
+      <button id="btnGen540" onclick="runPredict540(false)">Genereaza predictia</button>
+      <button class="ghost" onclick="runPredict540(true)">Reincarca istoricul (live)</button>
+      <span class="note" id="predStatus540"></span>
+    </div>
+    <div class="warn" id="predWarn540"></div>
+    <div id="predBody540" class="hide" style="margin-top:14px">
+      <div class="infobox" id="predDataInfo540"></div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <div class="sub"><b>Profil probabil al extragerii</b></div>
+          <div class="infobox" id="predProfile540"></div>
+        </div>
+        <div>
+          <div class="sub"><b>Top 8 perechi frecvente</b></div>
+          <div class="infobox" id="predPairs540"></div>
+        </div>
+      </div>
+
+      <div class="sub" style="margin-top:16px"><b>Top 12 numere (scor combinat)</b></div>
+      <div class="tscroll"><table>
+        <thead><tr><th class="num">#</th><th class="num">Numar</th><th class="num">Scor</th><th class="num">Frecventa</th><th class="num">Intarziere</th></tr></thead>
+        <tbody id="predTopNums540"></tbody>
+      </table></div>
+
+      <details style="margin-top:14px">
+        <summary>Matrice de tranzitie pe forma extragerii (Markov)</summary>
+        <div class="tscroll"><table>
+          <thead><tr><th>De la \ La</th><th class="num">low-heavy</th><th class="num">balanced</th><th class="num">high-heavy</th></tr></thead>
+          <tbody id="predMarkov540"></tbody>
+        </table></div>
+        <div class="note">Probabilitatea ca o extragere de o anumita forma sa fie urmata de fiecare forma.</div>
+      </details>
+
+      <div class="sub" style="margin-top:18px"><b id="predTicketsHead540">Bilete propuse (5 numere)</b></div>
+      <div class="tscroll"><table>
+        <thead><tr><th class="num">#</th><th>Bilet (5 nr)</th><th class="num">Suma</th><th class="num">I/P</th><th>Forma</th><th id="predExtHead540">Extindere</th></tr></thead>
+        <tbody id="predTickets540"></tbody>
+      </table></div>
+      <div class="note" id="predDisclaimer540"></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer540"></div>
+
+</div><!-- /tab-540 -->
+
+<div class="tabpane" id="tab-joker">
+
+  <div class="card" id="predCardJoker">
+    <h2>0. Predictie statistica Joker (5/45 + numar Joker 1/20, seed fix)</h2>
+    <div class="sub">Analizeaza intregul istoric Joker (frecventa + intarziere + perechi pentru cele 5 numere principale, plus un sub-model separat frecventa+intarziere pentru numarul Joker) si propune bilete reproductibile. Istoricul se actualizeaza live la fiecare rulare (arhiva loto49.ro).</div>
+
+    <details class="varbox" open>
+      <summary>Variabile predictie (reglabile)</summary>
+      <div class="vargrid">
+        <label>Numar bilete
+          <input id="varNJoker" type="number" min="1" max="50" value="2">
+        </label>
+        <label>Pool numere principale (top)
+          <input id="varPoolJoker" type="number" min="5" max="45" value="21">
+        </label>
+        <label>Pool extindere (principale)
+          <input id="varPool9Joker" type="number" min="5" max="45" value="21">
+        </label>
+        <label>Extra la extindere
+          <input id="varExtra9Joker" type="number" min="1" max="10" value="1">
+        </label>
+        <label>Pool numar Joker (top, din 20)
+          <input id="varPoolJK" type="number" min="1" max="20" value="8">
+        </label>
+        <label>Seed (reproductibil)
+          <input id="varSeedJoker" type="number" value="649">
+        </label>
+        <label>Pondere frecventa (principale)
+          <input id="varWFreqJoker" type="number" step="0.05" min="0" value="0.4">
+        </label>
+        <label>Pondere intarziere (principale)
+          <input id="varWDelayJoker" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label>Pondere perechi (principale)
+          <input id="varWPairJoker" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label>Pondere frecventa (numar Joker)
+          <input id="varWJFreqJoker" type="number" step="0.05" min="0" value="0.4">
+        </label>
+        <label>Pondere intarziere (numar Joker)
+          <input id="varWJDelayJoker" type="number" step="0.05" min="0" value="0.3">
+        </label>
+        <label class="chk">
+          <input id="varFilterJoker" type="checkbox" checked> Filtru de plauzibilitate (profil)
+        </label>
+      </div>
+      <div class="note">Pool principale = din cate numere de top se aleg cele 5. Pool numar Joker = din cate numere de top (1-20) se alege numarul Joker. Ponderile se normalizeaza automat, separat pentru cele 5 principale si separat pentru numarul Joker. <button class="ghost" style="padding:4px 9px;font-size:12px;margin-left:6px" onclick="resetVarsJoker()">Reseteaza la valori implicite</button></div>
+    </details>
+
+    <div class="btnrow">
+      <button id="btnGenJoker" onclick="runPredictJoker(false)">Genereaza predictia</button>
+      <button class="ghost" onclick="runPredictJoker(true)">Reincarca istoricul (live)</button>
+      <span class="note" id="predStatusJoker"></span>
+    </div>
+    <div class="warn" id="predWarnJoker"></div>
+    <div id="predBodyJoker" class="hide" style="margin-top:14px">
+      <div class="infobox" id="predDataInfoJoker"></div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <div class="sub"><b>Profil probabil al extragerii (5 principale)</b></div>
+          <div class="infobox" id="predProfileJoker"></div>
+        </div>
+        <div>
+          <div class="sub"><b>Top 8 perechi frecvente (principale)</b></div>
+          <div class="infobox" id="predPairsJoker"></div>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <div class="sub" style="margin-top:2px"><b>Top 12 numere principale (scor combinat)</b></div>
+          <div class="tscroll"><table>
+            <thead><tr><th class="num">#</th><th class="num">Numar</th><th class="num">Scor</th><th class="num">Frecventa</th><th class="num">Intarziere</th></tr></thead>
+            <tbody id="predTopNumsJoker"></tbody>
+          </table></div>
+        </div>
+        <div>
+          <div class="sub" style="margin-top:2px"><b>Top 8 numere Joker (scor propriu)</b></div>
+          <div class="tscroll"><table>
+            <thead><tr><th class="num">#</th><th class="num">Joker</th><th class="num">Scor</th><th class="num">Frecventa</th><th class="num">Intarziere</th></tr></thead>
+            <tbody id="predTopJK"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <details style="margin-top:14px">
+        <summary>Matrice de tranzitie pe forma extragerii (Markov, principale)</summary>
+        <div class="tscroll"><table>
+          <thead><tr><th>De la \ La</th><th class="num">low-heavy</th><th class="num">balanced</th><th class="num">high-heavy</th></tr></thead>
+          <tbody id="predMarkovJoker"></tbody>
+        </table></div>
+        <div class="note">Probabilitatea ca o extragere de o anumita forma sa fie urmata de fiecare forma.</div>
+      </details>
+
+      <div class="sub" style="margin-top:18px"><b id="predTicketsHeadJoker">Bilete propuse (5 principale + Joker)</b></div>
+      <div class="tscroll"><table>
+        <thead><tr><th class="num">#</th><th>5 principale</th><th class="num">Joker</th><th class="num">Suma</th><th class="num">I/P</th><th>Forma</th><th id="predExtHeadJoker">Extindere principale</th></tr></thead>
+        <tbody id="predTicketsJoker"></tbody>
+      </table></div>
+      <div class="note" id="predDisclaimerJoker"></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footerJoker"></div>
+
+</div><!-- /tab-joker -->
+
 
 <div class="tabpane" id="tab-fotbal">
 
@@ -458,6 +660,8 @@ const SCHEME_META = {
   59:{n:16,official:false},
 };
 const catNames={1:'I',2:'II',3:'III',4:'IV',0:'-'};
+const SCHEME_CODE_BY_N={};
+Object.keys(SCHEME_META).forEach(c=>{ if(!SCHEME_CODE_BY_N[SCHEME_META[c].n]) SCHEME_CODE_BY_N[SCHEME_META[c].n]=c; });
 
 let mode='simplu';
 let needPicks=6;     // cate numere trebuie alese in modul curent
@@ -718,16 +922,16 @@ document.getElementById('footer').innerHTML=
   '<a href="https://www.loto.ro/loto-new/newLotoSiteNexioFinalVersion/web/app2.php/jocuri/649_si_noroc/cum_se_joaca/Scheme_reduse_predefinite.html" target="_blank">Scheme reduse predefinite</a>. '+
   'Cod 48 foloseste combinatiile OFICIALE publicate de Loteria Romana. Codurile 49, 50, 56, 57, 58, 59 folosesc scheme acoperitoare generate si validate matematic (fiecare reproduce cel putin garantia minima oficiala: cat. IV la 3 prinse, cat. III la 4 prinse) — nu sunt neaparat combinatiile interne exacte ale terminalului Loteriei, care nu sunt publice, dar produc aceleasi garantii pe categorii. '+
   'Pret varianta simpla 8 lei + taxa bilet 0,5 lei (<a href="https://www.loto.ro" target="_blank">loto.ro</a>). '+
-  'Premii implicite orientative: cat. I report ~51 mil. lei (11 iunie 2026), cat. II ~40.000 lei/castig; cat. III si IV variabile — inlocuieste cu valorile reale ale tragerii. '+
+  'Premii implicite orientative: cat. I report ~30,79 mil. lei (11 iunie 2026), cat. II ~68.000 lei/castig; cat. III si IV variabile — inlocuieste cu valorile reale ale tragerii. '+
   'Probabilitati 6/49: cat. I 1:13.983.816, cat. II 1:54.201, cat. III 1:1.032, cat. IV 1:57. Simulatorul ruleaza integral local in browser.';
 
 // ---------- PREDICTIE (backend live) ----------
 // Adresa backendului, valabila pe toate mediile:
-//  - pplx.app: placeholder-ul __PORT_8000__ este inlocuit la publicare cu calea proxy (port/8000).
+//  - pplx.app: placeholder-ul port/8000 este inlocuit la publicare cu calea proxy (port/8000).
 //  - Render / hosting clasic: placeholder ramane neinlocuit, dar backendul e same-origin -> URL gol.
 //  - local de pe disc (file://): cadem pe localhost.
 const PRED_API = (function(){
-  var ph = '__PORT_8000__';
+  var ph = 'port/8000';
   if (!ph.startsWith('__')) return ph;                 // pplx.app (placeholder inlocuit)
   if (location.protocol === 'file:') return 'http://localhost:8000'; // fisier local
   return '';                                            // Render / same-origin
@@ -845,7 +1049,7 @@ function readVars(){
 }
 function resetVars(){
   const set=(id,val)=>document.getElementById(id).value=val;
-  set('varN',3);set('varPool',21);set('varPool9',21);set('varExtra9',3);set('varSeed',649);
+  set('varN',3);set('varPool',21);set('varPool9',21);set('varExtra9',1);set('varSeed',649);
   set('varWFreq',0.4);set('varWDelay',0.3);set('varWPair',0.3);
   document.getElementById('varFilter').checked=true;
 }
@@ -920,6 +1124,9 @@ function renderPrediction(d){
     mk.appendChild(tr);
   });
   // bilete
+  document.getElementById('predTicketsHead').textContent = `${d.tickets6.length} bilete propuse (6 numere, seed fix ${d.seed})`;
+  const extLen=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+d.params.extra9);
+  document.getElementById('predExtHead').textContent = `Extindere la ${extLen} numere`;
   const tt=document.getElementById('predTickets');tt.innerHTML='';
   d.tickets6.forEach((t,i)=>{
     const t9=d.tickets9[i];
@@ -937,9 +1144,14 @@ function renderPrediction(d){
     const cell=tr.children[6];
     const b6=document.createElement('button');b6.className='ghost';b6.style.padding='5px 9px';b6.style.fontSize='12px';b6.textContent='In simulator (6)';
     b6.onclick=()=>sendToSimulator(t.nums,'simplu');
-    const b9=document.createElement('button');b9.className='ghost';b9.style.padding='5px 9px';b9.style.fontSize='12px';b9.style.marginTop='4px';b9.textContent='In simulator (9 · cod 48)';
-    b9.onclick=()=>sendToSimulator(t9,'schema48');
-    cell.appendChild(b6);cell.appendChild(document.createElement('br'));cell.appendChild(b9);
+    cell.appendChild(b6);
+    const extCode=SCHEME_CODE_BY_N[t9.length];
+    if(extCode){
+      cell.appendChild(document.createElement('br'));
+      const b9=document.createElement('button');b9.className='ghost';b9.style.padding='5px 9px';b9.style.fontSize='12px';b9.style.marginTop='4px';b9.textContent=`In simulator (${t9.length} \u00b7 cod ${extCode})`;
+      b9.onclick=()=>sendToSimulator(t9,'schema'+extCode);
+      cell.appendChild(b9);
+    }
     tt.appendChild(tr);
   });
   document.getElementById('predDisclaimer').innerHTML=
@@ -952,10 +1164,10 @@ function renderPrediction(d){
 
 // trimite un bilet generat in simulatorul de mai jos
 function sendToSimulator(nums, target){
-  if(target==='schema48'){
-    // 9 numere -> schema redusa cod 48
+  if(target && target.indexOf('schema')===0){
+    const code = target.slice('schema'.length);
     document.querySelector('.mode[data-mode="schema"]').click();
-    document.getElementById('codSchema').value='48';
+    document.getElementById('codSchema').value=code;
     updateNeed();
   }else{
     document.querySelector('.mode[data-mode="simplu"]').click();
@@ -1024,8 +1236,9 @@ function exportPDF(){
     body:SHAPE_ORDER.map(a=>{const r=d.transition[a]||{};return [a,...SHAPE_ORDER.map(b=>((r[b]||0)*100).toFixed(1)+'%')];})});
 
   // 6. bilete
+  const extLenPdf=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+p.extra9);
   h2(`6. ${d.tickets6.length} bilete propuse (seed ${d.seed})`);
-  tbl({head:[['#','Bilet (6 nr)','Suma','I/P','Forma','Extindere la 9 numere']],
+  tbl({head:[['#','Bilet (6 nr)','Suma','I/P','Forma',`Extindere la ${extLenPdf} numere`]],
     body:d.tickets6.map((t,i)=>[i+1,t.nums.join(', '),t.sum,t.ip,t.shape,(d.tickets9[i]||[]).join(', ')]),
     columnStyles:{1:{cellWidth:120},5:{cellWidth:150}}});
 
@@ -1079,17 +1292,211 @@ loadPayConfig().then(handlePaymentReturn);
   if(nEl){ nEl.addEventListener('input', refreshPriceHint); nEl.addEventListener('change', refreshPriceHint); }
 })();
 
+/* ==================== LOTO 5/40 (predictie) ==================== */
+function readVars540(){
+  const v=id=>document.getElementById(id).value;
+  return {
+    n:v('varN540'), pool:v('varPool540'), pool9:v('varPool9540'),
+    extra9:v('varExtra9540'), seed:v('varSeed540'),
+    wfreq:v('varWFreq540'), wrecent:v('varWRecent540'), wdelay:v('varWDelay540'), wpair:v('varWPair540'),
+    filter:document.getElementById('varFilter540').checked?'1':'0',
+  };
+}
+function resetVars540(){
+  const set=(id,val)=>document.getElementById(id).value=val;
+  set('varN540',4);set('varPool540',21);set('varPool9540',21);set('varExtra9540',1);set('varSeed540',540);
+  set('varWFreq540',0.4);set('varWRecent540',0.3);set('varWDelay540',0.3);set('varWPair540',0.3);
+  document.getElementById('varFilter540').checked=true;
+}
+let lastPredData540=null;
+async function runPredict540(force){
+  const st=document.getElementById('predStatus540');
+  const warn=document.getElementById('predWarn540');
+  warn.style.display='none';
+  const vars=readVars540();
+  st.textContent = force ? 'Reincarc istoricul live de pe loto49.ro...' : 'Analizez istoricul si generez biletele...';
+  try{
+    const qs=new URLSearchParams(vars);
+    if(force)qs.set('force','1');
+    const res=await fetch(`${PRED_API}/api/predict540?`+qs.toString());
+    const d=await res.json();
+    if(!res.ok || d.error){throw new Error(d.error||('HTTP '+res.status));}
+    lastPredData540=d;
+    renderPrediction540(d);
+    const p=d.params;
+    st.textContent = (d.from_cache?'Gata (cache recent).':'Gata (istoric reincarcat live).')+
+      ` Parametri: ${p.n} bilete, pool ${p.pool}, extindere +${p.extra9} (pool ${p.pool9}), seed ${d.seed}, ponderi ${p.w_freq}/${p.w_recent}/${p.w_delay}/${p.w_pair}${p.filter?'':' , fara filtru'}.`;
+  }catch(e){
+    st.textContent='';
+    warn.style.display='block';
+    warn.textContent='Nu am putut genera predictia: '+e.message+'. Backendul de analiza trebuie sa ruleze (descarca arhiva de pe loto49.ro).';
+  }
+}
+function renderPrediction540(d){
+  document.getElementById('predBody540').classList.remove('hide');
+  document.getElementById('predDataInfo540').innerHTML=
+    `<div class="kv"><span>Extrageri analizate</span><b>${fmt(d.data.total_draws)}</b></div>`+
+    `<div class="kv"><span>Perioada</span><b>${d.data.first_date} &rarr; ${d.data.last_date}</b></div>`+
+    `<div class="kv"><span>Seed (reproductibil)</span><b>${d.seed}</b></div>`;
+  const tp=d.target_profile;
+  document.getElementById('predProfile540').innerHTML=
+    `<div class="kv"><span>Suma probabila</span><b>${tp.sum} (${(tp.sum_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Zona maxim</span><b>${tp.max} (${(tp.max_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Forma</span><b>${tp.shape} (${(tp.shape_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Impare/Pare</span><b>${tp.ip} (${(tp.ip_p*100).toFixed(1)}%)</b></div>`;
+  document.getElementById('predPairs540').innerHTML=
+    d.top_pairs.map(p=>`<div class="kv"><span>${p.a} - ${p.b}</span><b>${p.count} aparitii</b></div>`).join('');
+  const tn=document.getElementById('predTopNums540');tn.innerHTML='';
+  d.top_numbers.forEach((x,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="num">${i+1}</td><td class="num"><b>${x.n}</b></td><td class="num">${x.score.toFixed(4)}</td><td class="num">${x.freq}</td><td class="num">${x.delay}</td>`;
+    tn.appendChild(tr);
+  });
+  const mk=document.getElementById('predMarkov540');mk.innerHTML='';
+  SHAPE_ORDER.forEach(a=>{
+    const row=d.transition[a]||{};
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><b>${a}</b></td>`+SHAPE_ORDER.map(b=>`<td class="num">${((row[b]||0)*100).toFixed(1)}%</td>`).join('');
+    mk.appendChild(tr);
+  });
+  document.getElementById('predTicketsHead540').textContent = `${d.tickets5.length} bilete propuse (5 numere, seed fix ${d.seed})`;
+  const extLen540=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(5+d.params.extra9);
+  document.getElementById('predExtHead540').textContent = `Extindere la ${extLen540} numere`;
+  const tt=document.getElementById('predTickets540');tt.innerHTML='';
+  d.tickets5.forEach((t,i)=>{
+    const t9=d.tickets9[i];
+    const tr=document.createElement('tr');
+    tr.innerHTML=
+      `<td class="num">${i+1}</td>`+
+      `<td style="font-variant-numeric:tabular-nums;white-space:nowrap"><b>${t.nums.join(', ')}</b></td>`+
+      `<td class="num">${t.sum}</td>`+
+      `<td class="num">${t.ip}</td>`+
+      `<td style="white-space:nowrap">${t.shape}</td>`+
+      `<td style="font-variant-numeric:tabular-nums;white-space:nowrap">${t9.join(', ')}</td>`;
+    tt.appendChild(tr);
+  });
+  document.getElementById('predDisclaimer540').innerHTML=
+    'Metoda combina frecventa, frecventa recenta, intarzierea, afinitatea de perechi si profilul statistic al extragerilor. '+
+    `Seed-ul este FIX (${d.seed}): pentru acelasi istoric, biletele sunt mereu aceleasi; se schimba doar cand apar extrageri noi. `+
+    '<b>Onest:</b> Loto 5/40 este un proces independent si uniform &mdash; metoda NU creste sansa reala de castig, '+
+    'face doar biletele sa arate realist statistic. Sursa istoric: '+
+    '<a href="https://www.loto49.ro/arhiva-superloto.php" target="_blank">arhiva loto49.ro</a>.';
+}
+
+/* ==================== JOKER (predictie) ==================== */
+function readVarsJoker(){
+  const v=id=>document.getElementById(id).value;
+  return {
+    n:v('varNJoker'), pool:v('varPoolJoker'), pool9:v('varPool9Joker'),
+    extra9:v('varExtra9Joker'), pooljoker:v('varPoolJK'), seed:v('varSeedJoker'),
+    wfreq:v('varWFreqJoker'), wdelay:v('varWDelayJoker'), wpair:v('varWPairJoker'),
+    wjfreq:v('varWJFreqJoker'), wjdelay:v('varWJDelayJoker'),
+    filter:document.getElementById('varFilterJoker').checked?'1':'0',
+  };
+}
+function resetVarsJoker(){
+  const set=(id,val)=>document.getElementById(id).value=val;
+  set('varNJoker',2);set('varPoolJoker',21);set('varPool9Joker',21);set('varExtra9Joker',1);set('varPoolJK',8);set('varSeedJoker',649);
+  set('varWFreqJoker',0.4);set('varWDelayJoker',0.3);set('varWPairJoker',0.3);
+  set('varWJFreqJoker',0.4);set('varWJDelayJoker',0.3);
+  document.getElementById('varFilterJoker').checked=true;
+}
+let lastPredDataJoker=null;
+async function runPredictJoker(force){
+  const st=document.getElementById('predStatusJoker');
+  const warn=document.getElementById('predWarnJoker');
+  warn.style.display='none';
+  const vars=readVarsJoker();
+  st.textContent = force ? 'Reincarc istoricul live de pe loto49.ro...' : 'Analizez istoricul si generez biletele...';
+  try{
+    const qs=new URLSearchParams(vars);
+    if(force)qs.set('force','1');
+    const res=await fetch(`${PRED_API}/api/predictjoker?`+qs.toString());
+    const d=await res.json();
+    if(!res.ok || d.error){throw new Error(d.error||('HTTP '+res.status));}
+    lastPredDataJoker=d;
+    renderPredictionJoker(d);
+    const p=d.params;
+    st.textContent = (d.from_cache?'Gata (cache recent).':'Gata (istoric reincarcat live).')+
+      ` Parametri: ${p.n} bilete, pool ${p.pool}, extindere +${p.extra9} (pool ${p.pool9}), pool Joker ${p.pooljoker}, seed ${d.seed}, `+
+      `ponderi principale ${p.w_freq}/${p.w_delay}/${p.w_pair}, ponderi Joker ${p.wj_freq}/${p.wj_delay}${p.filter?'':' , fara filtru'}.`;
+  }catch(e){
+    st.textContent='';
+    warn.style.display='block';
+    warn.textContent='Nu am putut genera predictia: '+e.message+'. Backendul de analiza trebuie sa ruleze (descarca arhiva de pe loto49.ro).';
+  }
+}
+function renderPredictionJoker(d){
+  document.getElementById('predBodyJoker').classList.remove('hide');
+  document.getElementById('predDataInfoJoker').innerHTML=
+    `<div class="kv"><span>Extrageri analizate</span><b>${fmt(d.data.total_draws)}</b></div>`+
+    `<div class="kv"><span>Perioada</span><b>${d.data.first_date} &rarr; ${d.data.last_date}</b></div>`+
+    `<div class="kv"><span>Seed (reproductibil)</span><b>${d.seed}</b></div>`;
+  const tp=d.target_profile;
+  document.getElementById('predProfileJoker').innerHTML=
+    `<div class="kv"><span>Suma probabila</span><b>${tp.sum} (${(tp.sum_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Zona maxim</span><b>${tp.max} (${(tp.max_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Forma</span><b>${tp.shape} (${(tp.shape_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Impare/Pare</span><b>${tp.ip} (${(tp.ip_p*100).toFixed(1)}%)</b></div>`;
+  document.getElementById('predPairsJoker').innerHTML=
+    d.top_pairs.map(p=>`<div class="kv"><span>${p.a} - ${p.b}</span><b>${p.count} aparitii</b></div>`).join('');
+  const tn=document.getElementById('predTopNumsJoker');tn.innerHTML='';
+  d.top_numbers.forEach((x,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="num">${i+1}</td><td class="num"><b>${x.n}</b></td><td class="num">${x.score.toFixed(4)}</td><td class="num">${x.freq}</td><td class="num">${x.delay}</td>`;
+    tn.appendChild(tr);
+  });
+  const tjk=document.getElementById('predTopJK');tjk.innerHTML='';
+  d.top_joker_numbers.forEach((x,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="num">${i+1}</td><td class="num"><b>${x.n}</b></td><td class="num">${x.score.toFixed(4)}</td><td class="num">${x.freq}</td><td class="num">${x.delay}</td>`;
+    tjk.appendChild(tr);
+  });
+  const mk=document.getElementById('predMarkovJoker');mk.innerHTML='';
+  SHAPE_ORDER.forEach(a=>{
+    const row=d.transition[a]||{};
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><b>${a}</b></td>`+SHAPE_ORDER.map(b=>`<td class="num">${((row[b]||0)*100).toFixed(1)}%</td>`).join('');
+    mk.appendChild(tr);
+  });
+  document.getElementById('predTicketsHeadJoker').textContent = `${d.tickets5.length} bilete propuse (5 principale + Joker, seed fix ${d.seed})`;
+  const extLenJk=(d.tickets9&&d.tickets9[0])?d.tickets9[0].main9.length:(5+d.params.extra9);
+  document.getElementById('predExtHeadJoker').textContent = `Extindere principale la ${extLenJk} numere`;
+  const tt=document.getElementById('predTicketsJoker');tt.innerHTML='';
+  d.tickets5.forEach((t,i)=>{
+    const t9=d.tickets9[i];
+    const tr=document.createElement('tr');
+    tr.innerHTML=
+      `<td class="num">${i+1}</td>`+
+      `<td style="font-variant-numeric:tabular-nums;white-space:nowrap"><b>${t.nums.join(', ')}</b></td>`+
+      `<td class="num"><b>${t.joker}</b></td>`+
+      `<td class="num">${t.sum}</td>`+
+      `<td class="num">${t.ip}</td>`+
+      `<td style="white-space:nowrap">${t.shape}</td>`+
+      `<td style="font-variant-numeric:tabular-nums;white-space:nowrap">${t9.main9.join(', ')} <span style="color:var(--muted)">(Joker ${t9.joker})</span></td>`;
+    tt.appendChild(tr);
+  });
+  document.getElementById('predDisclaimerJoker').innerHTML=
+    'Cele 5 numere principale folosesc frecventa + intarziere + afinitate de perechi + profil statistic; numarul Joker foloseste un sub-model separat (frecventa + intarziere proprii, interval 1-20). '+
+    `Seed-ul este FIX (${d.seed}): pentru acelasi istoric, biletele sunt mereu aceleasi; se schimba doar cand apar extrageri noi. `+
+    '<b>Onest:</b> Joker este un proces independent si uniform &mdash; metoda NU creste sansa reala de castig, '+
+    'face doar biletele sa arate realist statistic. Sursa istoric: '+
+    '<a href="https://www.loto49.ro/arhiva-joker.php" target="_blank">arhiva loto49.ro</a>.';
+}
+
+
 /* ==================== TAB-URI ==================== */
+const TAB_IDS = {loto:'tab-loto', loto540:'tab-540', joker:'tab-joker', fotbal:'tab-fotbal'};
+const TAB_BTN_IDS = {loto:'tabBtnLoto', loto540:'tabBtnLoto540', joker:'tabBtnJoker', fotbal:'tabBtnFotbal'};
 function showTab(which){
-  const isLoto = which === 'loto';
-  document.getElementById('tab-loto').classList.toggle('active', isLoto);
-  document.getElementById('tab-fotbal').classList.toggle('active', !isLoto);
-  document.getElementById('tabBtnLoto').classList.toggle('active', isLoto);
-  document.getElementById('tabBtnFotbal').classList.toggle('active', !isLoto);
-  if(!isLoto && !window._fbLoaded){ window._fbLoaded = true; loadLeagues(); }
+  Object.keys(TAB_IDS).forEach(function(key){
+    document.getElementById(TAB_IDS[key]).classList.toggle('active', key===which);
+    document.getElementById(TAB_BTN_IDS[key]).classList.toggle('active', key===which);
+  });
+  if(which==='fotbal' && !window._fbLoaded){ window._fbLoaded = true; loadLeagues(); }
   // Initializeaza reclamele din tabul fotbal DOAR la prima afisare a lui
   // (push pe un container display:none => eroare AdSense availableWidth=0).
-  if(!isLoto && !window._fbAdsDone){
+  if(which==='fotbal' && !window._fbAdsDone){
     window._fbAdsDone = true;
     document.querySelectorAll('#tab-fotbal ins.adsbygoogle').forEach(function(){
       try{ (adsbygoogle = window.adsbygoogle || []).push({}); }catch(e){}
@@ -1099,10 +1506,8 @@ function showTab(which){
 
 /* ==================== FOTBAL ==================== */
 const FB_DEFAULT_LEAGUES = [
-    {"name": "Romania", "url": "https://www.flashscore.ro/fotbal/romania/superliga/"},
-    {"name": "Champions", "url": "https://www.flashscore.ro/fotbal/europa/champions-league/"},
-    {"name": "EuropaL", "url": "https://www.flashscore.ro/fotbal/europa/europa-league/"},
-    {"name": "Conference", "url": "https://www.flashscore.ro/fotbal/europa/conference-league/"}
+  {name:'Romania', url:'https://www.flashscore.ro/fotbal/romania/superliga/'},
+  {name:'Cupa mondiala', url:'https://www.flashscore.ro/fotbal/lume/cupa-mondiala/meciuri/'}
 ];
 let FB_SCRAPE_AVAILABLE = false;
 
@@ -1258,7 +1663,7 @@ async function runFootball(){
   const days = Math.max(1, Math.min(14, parseInt(document.getElementById('fbDays').value||'3',10)));
   const leagues = collectLeagues();
   if(!leagues.length){ warn.textContent='Adauga cel putin o liga (nume + URL) inainte de analiza.'; warn.style.display='block'; return; }
-  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la 5 minute)...';
+  btn.disabled = true; st.textContent = 'Se analizeaza (poate dura pana la un minut)...';
   try{
     const r = await fetch(`${PRED_API}/api/football/analyze`, {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days_window:days, leagues})
@@ -1283,5 +1688,332 @@ async function runFootball(){
   }
 }
 </script>
-</body>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+</script></body>
 </html>

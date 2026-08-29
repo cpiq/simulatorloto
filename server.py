@@ -322,14 +322,14 @@ class Analyzer:
             ok += 1
         return ok >= 2
 
-    def gen_ticket(self, rng, size=6, pool=21):
+    def gen_ticket(self, rng, size=6, pool=20):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         nums = np.array([n for n, _ in ranked])
         w = np.array([s for _, s in ranked], float)
         w = np.ones_like(w) / len(w) if w.sum() == 0 else w / w.sum()
         return sorted(rng.choice(nums, size, replace=False, p=w).tolist())
 
-    def gen_tickets(self, rng, count=3, size=6, pool=21, use_filter=True):
+    def gen_tickets(self, rng, count=12, size=6, pool=20, use_filter=True):
         target = self.target_profile()
         seen = set()
         ordered = []
@@ -350,7 +350,7 @@ class Analyzer:
                 ordered.append(t)
         return target, [list(t) for t in ordered]
 
-    def extend_to_9(self, rng, ticket6, pool=21, extra=3):
+    def extend_to_9(self, rng, ticket6, pool=22, extra=3):
         ranked = sorted(self.score.items(), key=lambda x: x[1], reverse=True)[:pool]
         existing = set(ticket6)
         nums = np.array([n for n, _ in ranked if n not in existing])
@@ -386,7 +386,7 @@ def api_config():
 @app.route("/api/price")
 def api_price():
     """Calcul de pret pentru un numar de bilete (informativ, pentru afisare)."""
-    n = _clamp(int(request.args.get("n", 3)), 1, 50)
+    n = _clamp(int(request.args.get("n", 12)), 1, 50)
     return jsonify(compute_price(n))
 
 
@@ -396,7 +396,7 @@ def create_checkout():
     if not PAYMENTS_ON:
         return jsonify({"error": "Plata nu este configurata pe server."}), 503
     data = request.get_json(silent=True) or {}
-    n = _clamp(int(data.get("n", 3)), 1, 50)
+    n = _clamp(int(data.get("n", 12)), 1, 50)
     pr = compute_price(n)
     if pr["total_bani"] <= 0:
         return jsonify({"error": "Acest numar de bilete este gratuit.", "price": pr}), 400
@@ -496,8 +496,8 @@ def predict():
         rec["used"] = True
         _PAID_SESSIONS[sid] = rec
     pool = _clamp(int(request.args.get("pool", 21)), 6, 49)
-    extra9 = _clamp(int(request.args.get("extra9", 3)), 1, 10)
-    pool9 = _clamp(int(request.args.get("pool9",21 )), 6, 49)
+    extra9 = _clamp(int(request.args.get("extra9", 1)), 1, 10)
+    pool9 = _clamp(int(request.args.get("pool9", 21)), 6, 49)
     seed = int(request.args.get("seed", SEED))
     use_filter = request.args.get("filter", "1") != "0"
     force = request.args.get("force", "0") == "1"
@@ -570,6 +570,193 @@ def predict():
         "top_numbers": top_numbers,
         "top_pairs": top_pairs,
         "tickets6": [with_profile(t) for t in tickets6],
+        "tickets9": tickets9,
+    })
+
+
+# ==================== LOTO 5/40 + JOKER (motoare adaugate) ====================
+try:
+    import loto_multi as _lm
+except Exception:
+    _lm = None
+
+
+@app.route("/api/predict540")
+def predict_540():
+    """Predictie Loto 5/40 (aceeasi metoda ca 6/49, adaptata la 1..40 / bilet 5 nr)."""
+    if _lm is None:
+        return jsonify({"error": "Modulul loto_multi nu este disponibil."}), 500
+
+    n_bilete = _lm._clamp(int(request.args.get("n", 4)), 1, 50)
+    pool = _lm._clamp(int(request.args.get("pool", 21)), 5, 40)
+    pool9 = _lm._clamp(int(request.args.get("pool9", 21)), 5, 40)
+    extra9 = _lm._clamp(int(request.args.get("extra9", 1)), 1, 10)
+    seed = int(request.args.get("seed", _lm.SEED_540))
+    use_filter = request.args.get("filter", "1") != "0"
+    force = request.args.get("force", "0") == "1"
+
+    w_freq = max(0.0, float(request.args.get("wfreq", 0.4)))
+    w_recent = max(0.0, float(request.args.get("wrecent", 0.3)))
+    w_delay = max(0.0, float(request.args.get("wdelay", 0.3)))
+    w_pair = max(0.0, float(request.args.get("wpair", 0.3)))
+    w_freq, w_recent, w_delay, w_pair = _lm.normalize_weights(w_freq, w_recent, w_delay, w_pair)
+
+    if extra9 > pool9 - 5:
+        extra9 = max(1, pool9 - 5)
+
+    try:
+        draws, meta, from_cache = _lm.get_draws_540(force=force)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 422
+
+    an = _lm.Analyzer540(draws)
+    an.compute_frequency()
+    an.compute_delay()
+    an.compute_pairs()
+    an.compute_transition()
+    an.compute_profile_stats()
+    an.compute_score(w_frequency=w_freq, w_recent_frequency=w_recent, w_delay=w_delay, w_pair=w_pair)
+
+    rng = np.random.RandomState(seed)
+    target, tickets5 = an.gen_tickets(rng, count=n_bilete, pool=pool, use_filter=use_filter)
+    tickets9 = [an.extend_to_9(rng, t, pool=pool9, extra=extra9) for t in tickets5]
+
+    top_numbers = sorted(an.score.items(), key=lambda x: -x[1])[:12]
+    top_numbers = [{"n": n, "score": round(s, 4), "freq": an.frequency[n], "delay": an.delay[n]}
+                   for n, s in top_numbers]
+    top_pairs = [{"a": a, "b": b, "count": c} for (a, b), c in an.pair_counts.most_common(8)]
+
+    def with_profile(tk):
+        p = _lm.draw_profile_540(tk)
+        return {"nums": tk, "sum": p["sum"], "ip": f'{p["odd"]}/{p["even"]}', "shape": p["shape"]}
+
+    shapes = ["low-heavy", "balanced", "high-heavy"]
+    transition = {}
+    for a in shapes:
+        row = an.transition.get(a, Counter())
+        tot = sum(row.values()) or 1
+        transition[a] = {b: round(row.get(b, 0) / tot, 3) for b in shapes}
+
+    return jsonify({
+        "seed": seed,
+        "params": {
+            "n": n_bilete, "pool": pool, "pool9": pool9, "extra9": extra9,
+            "filter": use_filter,
+            "w_freq": round(w_freq, 3), "w_recent": round(w_recent, 3),
+            "w_delay": round(w_delay, 3), "w_pair": round(w_pair, 3),
+        },
+        "from_cache": from_cache,
+        "data": meta,
+        "profile_stats": {k: {kk: round(vv, 3) for kk, vv in v.items()}
+                          for k, v in an.profile_stats.items()},
+        "target_profile": {
+            "sum": target["sum"], "sum_p": round(an.profile_stats["sum"][target["sum"]], 3),
+            "max": target["max"], "max_p": round(an.profile_stats["max"][target["max"]], 3),
+            "shape": target["shape"], "shape_p": round(an.profile_stats["shape"][target["shape"]], 3),
+            "ip": target["ip"], "ip_p": round(an.profile_stats["ip"][target["ip"]], 3),
+        },
+        "transition": transition,
+        "top_numbers": top_numbers,
+        "top_pairs": top_pairs,
+        "tickets5": [with_profile(t) for t in tickets5],
+        "tickets9": tickets9,
+    })
+
+
+@app.route("/api/predictjoker")
+def predict_joker():
+    """Predictie Joker (5/45 + numar Joker 1/20)."""
+    if _lm is None:
+        return jsonify({"error": "Modulul loto_multi nu este disponibil."}), 500
+
+    n_bilete = _lm._clamp(int(request.args.get("n", 2)), 1, 50)
+    pool_main = _lm._clamp(int(request.args.get("pool", 21)), 5, 45)
+    pool_main9 = _lm._clamp(int(request.args.get("pool9", 21)), 5, 45)
+    extra_main9 = _lm._clamp(int(request.args.get("extra9", 1)), 1, 10)
+    pool_joker = _lm._clamp(int(request.args.get("pooljoker", 8)), 1, 20)
+    seed = int(request.args.get("seed", _lm.SEED_JOKER))
+    use_filter = request.args.get("filter", "1") != "0"
+    force = request.args.get("force", "0") == "1"
+
+    w_freq = max(0.0, float(request.args.get("wfreq", 0.4)))
+    w_delay = max(0.0, float(request.args.get("wdelay", 0.3)))
+    w_pair = max(0.0, float(request.args.get("wpair", 0.3)))
+    w_freq, w_delay, w_pair = _lm.normalize_weights(w_freq, w_delay, w_pair)
+
+    wj_freq = max(0.0, float(request.args.get("wjfreq", 0.4)))
+    wj_delay = max(0.0, float(request.args.get("wjdelay", 0.3)))
+    wj_freq, wj_delay = _lm.normalize_weights(wj_freq, wj_delay)
+
+    if extra_main9 > pool_main9 - 5:
+        extra_main9 = max(1, pool_main9 - 5)
+
+    try:
+        draws, jokers, meta, from_cache = _lm.get_draws_joker(force=force)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 422
+
+    an = _lm.AnalyzerJoker(draws, jokers)
+    an.compute_frequency()
+    an.compute_delay()
+    an.compute_pairs()
+    an.compute_transition()
+    an.compute_profile_stats()
+    an.compute_score(w_freq=w_freq, w_delay=w_delay, w_pair=w_pair)
+    an.compute_joker_frequency()
+    an.compute_joker_delay()
+    an.compute_joker_score(w_freq=wj_freq, w_delay=wj_delay)
+
+    rng = np.random.RandomState(seed)
+    target, tickets = an.gen_tickets(rng, count=n_bilete, pool_main=pool_main,
+                                      pool_joker=pool_joker, use_filter=use_filter)
+    tickets9 = [
+        {"main9": an.extend_main_to_9(rng, main_t, pool=pool_main9, extra=extra_main9), "joker": j}
+        for main_t, j in tickets
+    ]
+
+    top_numbers = sorted(an.score.items(), key=lambda x: -x[1])[:12]
+    top_numbers = [{"n": n, "score": round(s, 4), "freq": an.frequency[n], "delay": an.delay[n]}
+                   for n, s in top_numbers]
+    top_joker_numbers = sorted(an.j_score.items(), key=lambda x: -x[1])[:8]
+    top_joker_numbers = [{"n": n, "score": round(s, 4), "freq": an.j_frequency[n], "delay": an.j_delay[n]}
+                         for n, s in top_joker_numbers]
+    top_pairs = [{"a": a, "b": b, "count": c} for (a, b), c in an.pair_counts.most_common(8)]
+
+    def with_profile(main_t, j):
+        p = _lm.draw_profile_joker(main_t)
+        return {"nums": list(main_t), "joker": j, "sum": p["sum"],
+                "ip": f'{p["odd"]}/{p["even"]}', "shape": p["shape"]}
+
+    shapes = ["low-heavy", "balanced", "high-heavy"]
+    transition = {}
+    for a in shapes:
+        row = an.transition.get(a, Counter())
+        tot = sum(row.values()) or 1
+        transition[a] = {b: round(row.get(b, 0) / tot, 3) for b in shapes}
+
+    return jsonify({
+        "seed": seed,
+        "params": {
+            "n": n_bilete, "pool": pool_main, "pool9": pool_main9, "extra9": extra_main9,
+            "pooljoker": pool_joker, "filter": use_filter,
+            "w_freq": round(w_freq, 3), "w_delay": round(w_delay, 3), "w_pair": round(w_pair, 3),
+            "wj_freq": round(wj_freq, 3), "wj_delay": round(wj_delay, 3),
+        },
+        "from_cache": from_cache,
+        "data": meta,
+        "profile_stats": {k: {kk: round(vv, 3) for kk, vv in v.items()}
+                          for k, v in an.profile_stats.items()},
+        "target_profile": {
+            "sum": target["sum"], "sum_p": round(an.profile_stats["sum"][target["sum"]], 3),
+            "max": target["max"], "max_p": round(an.profile_stats["max"][target["max"]], 3),
+            "shape": target["shape"], "shape_p": round(an.profile_stats["shape"][target["shape"]], 3),
+            "ip": target["ip"], "ip_p": round(an.profile_stats["ip"][target["ip"]], 3),
+        },
+        "transition": transition,
+        "top_numbers": top_numbers,
+        "top_joker_numbers": top_joker_numbers,
+        "top_pairs": top_pairs,
+        "tickets5": [with_profile(t, j) for t, j in tickets],
         "tickets9": tickets9,
     })
 
