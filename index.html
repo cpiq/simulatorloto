@@ -146,57 +146,38 @@
 <div class="tabpane active" id="tab-loto">
 
   <div class="card" id="predCard">
-    <h2>0. Predictie statistica (motor combinat, seed fix)</h2>
-    <div class="sub">Analizeaza intregul istoric 6/49 (frecventa + intarziere + perechi + profil extragere + matrice Markov) si propune bilete reproductibile. Istoricul se actualizeaza live la fiecare rulare.</div>
-
+    <h2>0. Loto 6/49 - motor unic</h2>
+    <div class="sub">Fiecare bilet are 6 numere de baza. Implicit primesti 6 bilete si cate 1 numar extra pentru fiecare.</div>
     <details class="varbox" open>
-      <summary>Variabile predictie (reglabile)</summary>
+      <summary>Parametri de generare</summary>
       <div class="vargrid">
-        <label>Numar bilete
-          <input id="varN" type="number" min="1" max="50" value="3">
-        </label>
-        <label>Pool numere (top)
-          <input id="varPool" type="number" min="6" max="49" value="21">
-        </label>
-        <label>Pool extindere
-          <input id="varPool9" type="number" min="6" max="49" value="21">
-        </label>
-        <label>Extra la extindere
-          <input id="varExtra9" type="number" min="1" max="10" value="1">
-        </label>
-        <label>Seed (reproductibil)
-          <input id="varSeed" type="number" value="649">
-        </label>
-        <label>Pondere frecventa
-          <input id="varWFreq" type="number" step="0.05" min="0" value="0.4">
-        </label>
-        <label>Pondere intarziere
-          <input id="varWDelay" type="number" step="0.05" min="0" value="0.3">
-        </label>
-        <label>Pondere perechi
-          <input id="varWPair" type="number" step="0.05" min="0" value="0.3">
-        </label>
-        <label class="chk">
-          <input id="varFilter" type="checkbox" checked> Filtru de plauzibilitate (profil)
-        </label>
+        <label>Numar de bilete<input id="varN" type="number" min="1" max="50" value="6"></label>
+        <label>Seed reproductibil<input id="varSeed" type="number" min="0" max="4294967295" value="649"></label>
+        <label>Numere suplimentare la extindere<input id="varExtra9" type="number" min="0" max="10" value="1"></label>
       </div>
-      <div class="note">Pool = din cate numere de top se aleg cele 6. Ponderile se normalizeaza automat sa insumeze 1. Extra la extindere &le; pool extindere &minus; 6. Pentru aceiasi parametri si acelasi istoric, biletele sunt mereu identice. <button class="ghost" style="padding:4px 9px;font-size:12px;margin-left:6px" onclick="resetVars()">Reseteaza la valori implicite</button></div>
+      <div class="note">Biletul 3 inseamna al treilea rand din tabel. +1 extra adauga un numar la cele 6 de baza ale fiecarui bilet. <button class="ghost" onclick="resetVars()">Reseteaza</button></div>
     </details>
-
     <div class="btnrow">
       <button id="btnGen" onclick="runPredict(false)">Genereaza predictia</button>
       <button class="ghost" onclick="runPredict(true)">Reincarca istoricul (live)</button>
       <button class="ghost" id="btnPdf" onclick="exportPDF()" disabled style="opacity:.5">Export PDF (raport complet)</button>
       <span class="note" id="predStatus"></span>
     </div>
-    <div class="note" id="priceHint" style="margin-top:2px"></div>
     <div class="warn" id="predWarn"></div>
     <div id="predBody" class="hide" style="margin-top:14px">
       <div class="infobox" id="predDataInfo"></div>
 
+
+      <div class="sub" style="margin-top:18px"><b id="predTicketsHead">Bilete propuse (6 numere)</b> &mdash; apasa "In simulator" ca sa verifici un bilet</div>
+      <div class="tscroll"><table>
+        <thead><tr><th class="num">Bilet</th><th>Numere de baza (6)</th><th id="predExtHead">Cu extra</th><th></th></tr></thead>
+        <tbody id="predTickets"></tbody>
+      </table></div>
+      <div class="note" id="predDisclaimer"></div>
+      <details class="varbox"><summary>Cum au fost generate biletele (detalii)</summary>
       <div class="grid2" style="margin-top:14px">
         <div>
-          <div class="sub"><b>Profil probabil al extragerii</b></div>
+          <div class="sub"><b>Profil descriptiv al istoricului</b></div>
           <div class="infobox" id="predProfile"></div>
         </div>
         <div>
@@ -205,29 +186,19 @@
         </div>
       </div>
 
-      <div class="sub" style="margin-top:16px"><b>Top 12 numere (scor combinat)</b></div>
+      <div class="sub" style="margin-top:16px"><b>Top 12 frecvente istorice (informative)</b></div>
       <div class="tscroll"><table>
-        <thead><tr><th class="num">#</th><th class="num">Numar</th><th class="num">Scor</th><th class="num">Frecventa</th><th class="num">Intarziere</th></tr></thead>
+        <thead><tr><th class="num">#</th><th class="num">Numar</th><th class="num">Valoare uniforma*</th><th class="num">Frecventa</th><th class="num">Intarziere</th></tr></thead>
         <tbody id="predTopNums"></tbody>
       </table></div>
 
-      <details style="margin-top:14px">
-        <summary>Matrice de tranzitie pe forma extragerii (Markov)</summary>
-        <div class="tscroll"><table>
-          <thead><tr><th>De la \ La</th><th class="num">low-heavy</th><th class="num">balanced</th><th class="num">high-heavy</th></tr></thead>
-          <tbody id="predMarkov"></tbody>
-        </table></div>
-        <div class="note">Probabilitatea ca o extragere de o anumita forma sa fie urmata de fiecare forma. low-heavy = majoritate numere &le;24, high-heavy = majoritate &ge;25.</div>
+      <div class="note">Biletele sunt generate uniform, fara ponderi sau filtre din istoric. Primele 8 bilete de baza nu repeta numere intre ele; la cele 6 bilete implicite sunt 36 de numere distincte. Extra pastreaza cele 6 numere ale fiecarui bilet.</div>
+      <div class="note">*Toate numerele au aceeasi valoare: 6/49. Frecventele, perechile, intarzierea si profilul descriu istoricul; nu aleg numerele de pe bilete. Cu aceiasi parametri, biletele raman aceleasi pana la o noua data de extragere.</div>
+      <div class="infobox" id="predCoverage" style="margin-top:14px"></div>
       </details>
-
-      <div class="sub" style="margin-top:18px"><b id="predTicketsHead">Bilete propuse (6 numere)</b> &mdash; apasa "In simulator" ca sa testezi un bilet mai sus</div>
-      <div class="tscroll"><table>
-        <thead><tr><th class="num">#</th><th>Bilet (6 nr)</th><th class="num">Suma</th><th class="num">I/P</th><th>Forma</th><th id="predExtHead">Extindere</th><th></th></tr></thead>
-        <tbody id="predTickets"></tbody>
-      </table></div>
-      <div class="note" id="predDisclaimer"></div>
     </div>
   </div>
+
 <ins class="adsbygoogle"
      style="display:block"
      data-ad-format="autorelaxed"
@@ -926,169 +897,31 @@ document.getElementById('footer').innerHTML=
   'Probabilitati 6/49: cat. I 1:13.983.816, cat. II 1:54.201, cat. III 1:1.032, cat. IV 1:57. Simulatorul ruleaza integral local in browser.';
 
 // ---------- PREDICTIE (backend live) ----------
-// Adresa backendului, valabila pe toate mediile:
-//  - pplx.app: placeholder-ul port/8000 este inlocuit la publicare cu calea proxy (port/8000).
-//  - Render / hosting clasic: placeholder ramane neinlocuit, dar backendul e same-origin -> URL gol.
-//  - local de pe disc (file://): cadem pe localhost.
-const PRED_API = (function(){
-  var ph = 'port/8000';
-  if (!ph.startsWith('__')) return ph;                 // pplx.app (placeholder inlocuit)
-  if (location.protocol === 'file:') return 'http://localhost:8000'; // fisier local
-  return '';                                            // Render / same-origin
-})();
+// Flask serveste pagina si API-ul de pe aceeasi adresa.
+const PRED_API = location.protocol === 'file:' ? 'http://localhost:8000' : '';
 const SHAPE_ORDER = ['low-heavy','balanced','high-heavy'];
 let lastPredData = null;
 
-// ---------- PLATA (Stripe) ----------
-let PAYCFG = { payments_on:false, free_tickets:3, tickets_per_pack:3, price_per_pack_lei:5 };
-let PAID_TOKEN = null;   // session_id valid dupa o plata reusita (o singura generare)
-
-async function loadPayConfig(){
-  try{
-    const r = await fetch(`${PRED_API}/api/config`);
-    if(r.ok){ PAYCFG = await r.json(); }
-  }catch(e){ /* ramane gratuit daca nu raspunde */ }
-  refreshPriceHint();
-}
-
-function computePriceClient(n){
-  n = Math.max(0, parseInt(n||0,10));
-  const free = PAYCFG.free_tickets, per = PAYCFG.tickets_per_pack, ppp = PAYCFG.price_per_pack_lei;
-  const paid = Math.max(0, n - free);
-  const packs = paid>0 ? Math.ceil(paid/per) : 0;
-  return { n, free:Math.min(n,free), paid, packs, total:packs*ppp };
-}
-
-function refreshPriceHint(){
-  const el = document.getElementById('priceHint');
-  if(!el) return;
-  const n = parseInt((document.getElementById('varN')||{}).value||12,10);
-  const p = computePriceClient(n);
-  const btn = document.getElementById('btnGen');
-  if(!PAYCFG.payments_on){
-    el.innerHTML = `Primele ${PAYCFG.free_tickets} bilete sunt gratuite. (Plata nu este activata pe acest server - momentan tot ce generezi e gratuit.)`;
-    if(btn) btn.textContent = 'Genereaza predictia';
-    return;
-  }
-  if(p.total<=0){
-    el.innerHTML = `Generezi <b>${n}</b> bilete - <b style="color:var(--green)">gratuit</b> (primele ${PAYCFG.free_tickets} sunt gratis).`;
-    if(btn) btn.textContent = 'Genereaza predictia (gratis)';
-  } else {
-    el.innerHTML = `Generezi <b>${n}</b> bilete: ${p.free} gratis + ${p.paid} platite = <b>${p.packs}</b> pachet(e) x ${PAYCFG.price_per_pack_lei} lei = <b style="color:var(--accent)">${p.total} lei</b>. Plata se face securizat prin Stripe.`;
-    if(btn) btn.textContent = `Plateste ${p.total} lei si genereaza`;
-  }
-}
-
-async function startCheckout(n){
-  const st=document.getElementById('predStatus');
-  st.textContent='Pregatesc plata securizata...';
-  try{
-    const r = await fetch(`${PRED_API}/api/create-checkout`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ n })
-    });
-    const d = await r.json();
-    if(!r.ok || d.error){ throw new Error(d.error || ('HTTP '+r.status)); }
-    // salvam parametrii ca sa generam automat dupa intoarcerea de la plata
-    try{ sessionStorage.setItem('loto_pending_vars', JSON.stringify(readVars())); }catch(e){}
-    window.location.href = d.checkout_url;   // redirect la pagina Stripe
-  }catch(e){
-    st.textContent='';
-    const warn=document.getElementById('predWarn');
-    warn.style.display='block';
-    warn.textContent='Nu am putut initia plata: '+e.message;
-  }
-}
-
-// La incarcarea paginii: daca venim inapoi de la Stripe, verificam plata.
-async function handlePaymentReturn(){
-  const params = new URLSearchParams(location.search);
-  if(params.get('pay_cancel')){
-    const st=document.getElementById('predStatus');
-    if(st) st.textContent='Plata a fost anulata. Poti incerca din nou.';
-    history.replaceState({}, '', location.pathname);
-    return;
-  }
-  const sid = params.get('paid_session');
-  if(!sid) return;
-  const st=document.getElementById('predStatus');
-  if(st) st.textContent='Verific plata...';
-  try{
-    const r = await fetch(`${PRED_API}/api/verify?session_id=`+encodeURIComponent(sid));
-    const d = await r.json();
-    history.replaceState({}, '', location.pathname);  // curatam URL-ul
-    if(d.paid){
-      PAID_TOKEN = sid;
-      // restauram parametrii salvati inainte de plata
-      try{
-        const saved = JSON.parse(sessionStorage.getItem('loto_pending_vars')||'null');
-        if(saved){
-          const set=(id,val)=>{const el=document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=(val==='1'); else el.value=val; }};
-          set('varN',saved.n);set('varPool',saved.pool);set('varPool9',saved.pool9);set('varExtra9',saved.extra9);
-          set('varSeed',saved.seed);set('varWFreq',saved.wfreq);set('varWDelay',saved.wdelay);set('varWPair',saved.wpair);set('varFilter',saved.filter);
-        }
-      }catch(e){}
-      if(st) st.textContent='Plata confirmata. Generez biletele...';
-      runPredict(false);   // genereaza automat folosind PAID_TOKEN
-    } else {
-      if(st) st.textContent='Plata nu a putut fi confirmata.';
-    }
-  }catch(e){
-    if(st) st.textContent='Eroare la verificarea platii: '+e.message;
-  }
-}
-
 function readVars(){
-  const v=id=>document.getElementById(id);
-  return {
-    n:v('varN').value, pool:v('varPool').value, pool9:v('varPool9').value,
-    extra9:v('varExtra9').value, seed:v('varSeed').value,
-    wfreq:v('varWFreq').value, wdelay:v('varWDelay').value, wpair:v('varWPair').value,
-    filter:v('varFilter').checked?'1':'0',
-  };
+  return {n:document.getElementById('varN').value,seed:document.getElementById('varSeed').value,extra9:document.getElementById('varExtra9').value};
 }
 function resetVars(){
-  const set=(id,val)=>document.getElementById(id).value=val;
-  set('varN',3);set('varPool',21);set('varPool9',21);set('varExtra9',1);set('varSeed',649);
-  set('varWFreq',0.4);set('varWDelay',0.3);set('varWPair',0.3);
-  document.getElementById('varFilter').checked=true;
+  document.getElementById('varN').value=6;document.getElementById('varSeed').value=649;document.getElementById('varExtra9').value=1;
 }
-
 async function runPredict(force){
-  const st=document.getElementById('predStatus');
-  const warn=document.getElementById('predWarn');
-  warn.style.display='none';
-  const vars=readVars();
-  const nWanted = parseInt(vars.n,10)||0;
-
-  // Daca plata e activa, depasim numarul gratuit si NU avem deja un token platit,
-  // pornim plata in loc sa generam direct.
-  if(PAYCFG.payments_on && nWanted > PAYCFG.free_tickets && !PAID_TOKEN){
-    const p = computePriceClient(nWanted);
-    if(p.total>0){ startCheckout(nWanted); return; }
-  }
-
-  st.textContent = force ? 'Reincarc istoricul live de pe loto49.ro...' : 'Analizez istoricul si generez biletele...';
+  const st=document.getElementById('predStatus'),warn=document.getElementById('predWarn'),button=document.getElementById('btnGen');
+  warn.style.display='none';button.disabled=true;
+  st.textContent=force?'Reincarc istoricul live...':'Generez biletele...';
   try{
-    const qs=new URLSearchParams(vars);
-    if(force)qs.set('force','1');
-    if(PAID_TOKEN) qs.set('pay', PAID_TOKEN);   // dovada platii catre backend
-    const res=await fetch(`${PRED_API}/api/predict?`+qs.toString());
-    const d=await res.json();
-    if(!res.ok || d.error){throw new Error(d.error||('HTTP '+res.status));}
-    PAID_TOKEN=null;   // tokenul e valabil pentru o singura generare
-    refreshPriceHint();
-    lastPredData=d;
-    const pdfBtn=document.getElementById('btnPdf');pdfBtn.disabled=false;pdfBtn.style.opacity='1';
-    renderPrediction(d);
-    const p=d.params;
-    st.textContent = (d.from_cache?'Gata (cache recent).':'Gata (istoric reincarcat live).')+
-      ` Parametri: ${p.n} bilete, pool ${p.pool}, extindere +${p.extra9} (pool ${p.pool9}), seed ${d.seed}, ponderi ${p.w_freq}/${p.w_delay}/${p.w_pair}${p.filter?'':' , fara filtru'}.`;
-  }catch(e){
-    st.textContent='';
-    warn.style.display='block';
-    warn.textContent='Nu am putut genera predictia: '+e.message+'. Backendul de analiza trebuie sa ruleze (descarca arhiva de pe loto49.ro).';
-  }
+    const query=new URLSearchParams(readVars());
+    if(force)query.set('force','1');
+    const response=await fetch(`${PRED_API}/api/predict?`+query.toString(),{cache:'no-store'}),d=await response.json();
+    if(!response.ok||d.error)throw new Error(d.error||('HTTP '+response.status));
+    lastPredData=d;renderPrediction(d);
+    const pdf=document.getElementById('btnPdf');pdf.disabled=false;pdf.style.opacity='1';
+    st.textContent=`Gata. ${d.params.n} bilete generate. Cu aceiasi parametri, raman aceleasi pana la o noua data de extragere.`;
+  }catch(error){st.textContent='';warn.style.display='block';warn.textContent='Nu am putut genera biletele: '+error.message+'. Incearca din nou.';}
+  finally{button.disabled=false;}
 }
 
 function renderPrediction(d){
@@ -1101,7 +934,7 @@ function renderPrediction(d){
   // profil probabil
   const tp=d.target_profile;
   document.getElementById('predProfile').innerHTML=
-    `<div class="kv"><span>Suma probabila</span><b>${tp.sum} (${(tp.sum_p*100).toFixed(1)}%)</b></div>`+
+    `<div class="kv"><span>Interval suma cel mai frecvent</span><b>${tp.sum} (${(tp.sum_p*100).toFixed(1)}%)</b></div>`+
     `<div class="kv"><span>Zona maxim</span><b>${tp.max} (${(tp.max_p*100).toFixed(1)}%)</b></div>`+
     `<div class="kv"><span>Forma</span><b>${tp.shape} (${(tp.shape_p*100).toFixed(1)}%)</b></div>`+
     `<div class="kv"><span>Impare/Pare</span><b>${tp.ip} (${(tp.ip_p*100).toFixed(1)}%)</b></div>`;
@@ -1112,21 +945,13 @@ function renderPrediction(d){
   const tn=document.getElementById('predTopNums');tn.innerHTML='';
   d.top_numbers.forEach((x,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="num">${i+1}</td><td class="num"><b>${x.n}</b></td><td class="num">${x.score.toFixed(4)}</td><td class="num">${x.freq}</td><td class="num">${x.delay}</td>`;
+    tr.innerHTML=`<td class="num">${i+1}</td><td class="num"><b>${x.n}</b></td><td class="num">6/49</td><td class="num">${x.freq}</td><td class="num">${x.delay}</td>`;
     tn.appendChild(tr);
   });
-  // markov
-  const mk=document.getElementById('predMarkov');mk.innerHTML='';
-  SHAPE_ORDER.forEach(a=>{
-    const row=d.transition[a]||{};
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><b>${a}</b></td>`+SHAPE_ORDER.map(b=>`<td class="num">${((row[b]||0)*100).toFixed(1)}%</td>`).join('');
-    mk.appendChild(tr);
-  });
   // bilete
-  document.getElementById('predTicketsHead').textContent = `${d.tickets6.length} bilete propuse (6 numere, seed fix ${d.seed})`;
+  document.getElementById('predTicketsHead').textContent = `${d.tickets6.length} bilete propuse`;
   const extLen=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+d.params.extra9);
-  document.getElementById('predExtHead').textContent = `Extindere la ${extLen} numere`;
+  document.getElementById('predExtHead').textContent = `Cu extra (${extLen} numere in total)`;
   const tt=document.getElementById('predTickets');tt.innerHTML='';
   d.tickets6.forEach((t,i)=>{
     const t9=d.tickets9[i];
@@ -1136,12 +961,9 @@ function renderPrediction(d){
     tr.innerHTML=
       `<td class="num">${i+1}</td>`+
       `<td style="font-variant-numeric:tabular-nums;white-space:nowrap"><b>${numsStr}</b></td>`+
-      `<td class="num">${t.sum}</td>`+
-      `<td class="num">${t.ip}</td>`+
-      `<td style="white-space:nowrap">${t.shape}</td>`+
       `<td style="font-variant-numeric:tabular-nums;white-space:nowrap">${t9Str}</td>`+
       `<td></td>`;
-    const cell=tr.children[6];
+    const cell=tr.children[3];
     const b6=document.createElement('button');b6.className='ghost';b6.style.padding='5px 9px';b6.style.fontSize='12px';b6.textContent='In simulator (6)';
     b6.onclick=()=>sendToSimulator(t.nums,'simplu');
     cell.appendChild(b6);
@@ -1154,12 +976,16 @@ function renderPrediction(d){
     }
     tt.appendChild(tr);
   });
-  document.getElementById('predDisclaimer').innerHTML=
-    'Metoda combina frecventa, intarzierea, afinitatea de perechi si profilul statistic al extragerilor. '+
-    'Seed-ul este FIX (649): pentru acelasi istoric, biletele sunt mereu aceleasi; se schimba doar cand apar extrageri noi. '+
-    '<b>Onest:</b> Loto 6/49 este un proces independent si uniform &mdash; metoda NU creste sansa reala de castig, '+
-    'face doar biletele sa arate realist statistic. Sursa istoric: '+
-    '<a href="https://www.loto49.ro/arhiva-loto49.php" target="_blank">arhiva loto49.ro</a>.';
+  const c=d.coverage,p=d.params;
+  document.getElementById('predCoverage').innerHTML=
+    `<div class="kv"><span>Numere distincte in pachet</span><b>${c.distinct_numbers} / 49</b></div>`+
+    `<div class="kv"><span>Triplete diferite acoperite</span><b>${c.unique_triples}</b></div>`+
+    `<div class="kv"><span>Numere comune intre doua bilete (maxim)</span><b>${c.max_overlap}</b></div>`+
+    '<div class="kv"><span>Generare</span><b>Uniforma, fara ponderi istorice</b></div>'+
+    `<div class="kv"><span>Data care fixeaza biletele</span><b>${p.cycle_date||d.data.last_date}</b></div>`+
+    `<div class="kv"><span>Extindere la ${p.extension_size} numere</span><b>${p.extension_variants} variante simple / extindere completa</b></div>`;
+  document.getElementById('predDisclaimer').textContent='Biletele sunt numerotate in ordinea generarii. Rezultatele viitoare nu sunt garantate.';
+
 }
 
 // trimite un bilet generat in simulatorul de mai jos
@@ -1200,7 +1026,7 @@ function exportPDF(){
   const p=d.params; const now=new Date();
   doc.setFontSize(9);doc.setTextColor(...MUT);doc.setFont(undefined,'normal');
   doc.text('Generat: '+now.toLocaleString('ro-RO'),M,y);y+=14;
-  doc.text(`Parametri: ${p.n} bilete · pool ${p.pool} · extindere +${p.extra9} (pool ${p.pool9}) · seed ${d.seed} · ponderi ${p.w_freq}/${p.w_delay}/${p.w_pair}${p.filter?'':' · fara filtru'}`,M,y);y+=20;
+  para(`Motor unic: ${p.n} variante simple; seed ${d.seed}; extindere la ${p.extension_size} numere (${p.extension_variants} variante simple).`,9);
   doc.setTextColor(40);
 
   // 1. date istoric
@@ -1212,33 +1038,36 @@ function exportPDF(){
   ]});
 
   // 2. profil probabil
-  h2('2. Profil probabil al extragerii');
+  h2('2. Profil descriptiv al istoricului');
   const tp=d.target_profile;
-  tbl({head:[['Caracteristica','Valoare','Probabilitate']],body:[
-    ['Suma probabila',String(tp.sum),(tp.sum_p*100).toFixed(1)+'%'],
+  tbl({head:[['Caracteristica','Valoare','Frecventa istorica']],body:[
+    ['Interval suma',String(tp.sum),(tp.sum_p*100).toFixed(1)+'%'],
     ['Zona maxim',String(tp.max),(tp.max_p*100).toFixed(1)+'%'],
     ['Forma',tp.shape,(tp.shape_p*100).toFixed(1)+'%'],
     ['Impare/Pare',tp.ip,(tp.ip_p*100).toFixed(1)+'%'],
   ]});
 
   // 3. top numere
-  h2('3. Top numere (scor combinat)');
-  tbl({head:[['#','Numar','Scor','Frecventa','Intarziere']],
-    body:d.top_numbers.map((x,i)=>[i+1,x.n,x.score.toFixed(4),x.freq,x.delay])});
+  h2('3. Frecvente istorice (descriptive)');
+  tbl({head:[['#','Numar','Valoare uniforma','Frecventa','Intarziere']],
+    body:d.top_numbers.map((x,i)=>[i+1,x.n,'6/49',x.freq,x.delay])});
 
   // 4. perechi
   h2('4. Top perechi frecvente');
   tbl({head:[['Pereche','Aparitii']],body:d.top_pairs.map(pr=>[pr.a+' - '+pr.b,pr.count])});
 
-  // 5. markov
-  h2('5. Matrice de tranzitie pe forma (Markov)');
-  tbl({head:[['De la \\ La','low-heavy','balanced','high-heavy']],
-    body:SHAPE_ORDER.map(a=>{const r=d.transition[a]||{};return [a,...SHAPE_ORDER.map(b=>((r[b]||0)*100).toFixed(1)+'%')];})});
-
+  h2('5. Acoperirea pachetului');
+  tbl({head:[['Indicator','Valoare']],body:[
+    ['Numere distincte in pachet',d.coverage.distinct_numbers],
+    ['Triplete diferite',d.coverage.unique_triples],
+    ['Suprapunere maxima',d.coverage.max_overlap],
+    ['Generare','Uniforma, fara ponderi istorice'],
+    ['Data care fixeaza biletele',p.cycle_date||d.data.last_date],
+  ]});
   // 6. bilete
   const extLenPdf=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+p.extra9);
   h2(`6. ${d.tickets6.length} bilete propuse (seed ${d.seed})`);
-  tbl({head:[['#','Bilet (6 nr)','Suma','I/P','Forma',`Extindere la ${extLenPdf} numere`]],
+  tbl({head:[['Bilet','Numere de baza (6)','Suma','I/P','Forma',`Cu extra (${extLenPdf} numere)`]],
     body:d.tickets6.map((t,i)=>[i+1,t.nums.join(', '),t.sum,t.ip,t.shape,(d.tickets9[i]||[]).join(', ')]),
     columnStyles:{1:{cellWidth:120},5:{cellWidth:150}}});
 
@@ -1266,7 +1095,7 @@ function exportPDF(){
   // disclaimer
   ensure(60);
   doc.setFontSize(7.5);doc.setTextColor(...MUT);
-  const disc='Onest: Loto 6/49 este un proces independent si uniform - metoda NU creste sansa reala de castig, face doar biletele sa arate realist statistic. '+
+  const disc='Generare uniforma, fara ponderi istorice. La 6 bilete, cele 36 de numere de baza sunt distincte. Cu aceiasi parametri, biletele raman aceleasi pana la o noua data de extragere. Avantajul predictiv nu este demonstrat. '+
     'Sursa istoric: arhiva loto49.ro. Structura schemelor reduse: Loteria Romana (loto.ro). '+
     'Probabilitati 6/49: cat. I 1:13.983.816, cat. II 1:54.201, cat. III 1:1.032, cat. IV 1:57.';
   const dl=doc.splitTextToSize(disc,W-2*M);doc.text(dl,M,y);
@@ -1284,13 +1113,6 @@ updateNeed();
 buildGrid('picksGrid','pick');
 buildGrid('drawGrid','draw');
 render();
-
-// init plata
-loadPayConfig().then(handlePaymentReturn);
-(function(){
-  const nEl = document.getElementById('varN');
-  if(nEl){ nEl.addEventListener('input', refreshPriceHint); nEl.addEventListener('change', refreshPriceHint); }
-})();
 
 /* ==================== LOTO 5/40 (predictie) ==================== */
 function readVars540(){

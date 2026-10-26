@@ -1,4 +1,4 @@
-"""Loto 6/49 - port Python al motorului unic publicat: 649-coverage-v1.
+"""Loto 6/49 - port Python al motorului unic publicat: 649-coverage-v2.
 
 Necesita Python 3.10+
 Instalare: pip install requests beautifulsoup4 tzdata
@@ -6,10 +6,12 @@ Rulare: python perplexitymix.py
 Optional: --n 12 --seed 649 --extra 3 --backtest 500 --json rezultat.json
 Jupyter: ruleaza celula direct (valorile implicite) sau main(["--n", "12"]).
 Argumentele interne ale kernelului sunt ignorate numai la rularea directa in notebook.
-Pentru aceleasi extrageri normalizate, seed si parametri, biletele si
+Pentru aceeasi ultima data istorica, seed si parametri, biletele si
 extinderile sunt identice cu motorul JavaScript de pe site.
-Frecventa si perechile au influenta numai daca trec validarea cronologica.
-Intarzierea si profilul sunt descriptive. Nu exista avantaj predictiv garantat.
+Generarea este uniforma; primele opt bilete sunt disjuncte. Calibrarea,
+frecventa, perechile si profilul sunt descriptive sau diagnostice.
+Corectarea rezultatelor vechi nu schimba biletele ciclului curent.
+Nu exista avantaj predictiv garantat.
 """
 from __future__ import annotations
 
@@ -28,11 +30,16 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
-from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from loto_archive_parser import (
+    ARCHIVE_URLS_649, LotoDataExtractionError, archive_request_url,
+    extract_draws_from_html, normalize_draws, valid_draw,
+)
 
-ENGINE_VERSION = "649-coverage-v1"
+ENGINE_VERSION = "649-coverage-v2"
+GENERATION_MODE = "uniform_coverage"
+EVALUATION_VERSION = "649-evaluation-v2"
 P_NUMBER, P_PAIR, PRIOR_DRAWS, MAX_SHARED = 6 / 49, 30 / (49 * 48), 400, 2
 MASK = 0xFFFFFFFF
 UNIVERSE = list(range(1, 50))
@@ -40,24 +47,12 @@ UNIVERSE = list(range(1, 50))
 
 @dataclass
 class LotoConfig:
-    archive_urls: tuple = (
-        "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
-        "https://www.loto49.ro/arhiva-loto49-2001-2005.php",
-        "https://www.loto49.ro/arhiva-loto49-2006-2010.php",
-        "https://www.loto49.ro/arhiva-loto49-2011-2015.php",
-        "https://www.loto49.ro/arhiva-loto-6-49-din-perioada-2016-2019.php",
-        "https://www.loto49.ro/arhiva-loto-6-49-din-perioada-2020-2023.php",
-        "https://www.loto49.ro/arhiva-loto49.php",
-    )
+    archive_urls: tuple = ARCHIVE_URLS_649
     request_timeout: int = 30
     sleep_between_requests: float = 1.0
     seed: int = 649
     n_bilete: int = 6
     extra_9: int = 1  # 6 + 1 = 7; accepta 0..10 numere suplimentare
-
-
-class LotoDataExtractionError(RuntimeError):
-    pass
 
 
 def build_session():
@@ -68,51 +63,9 @@ def build_session():
     adapter = HTTPAdapter(max_retries=retry)
     session.mount("http://", adapter)
     session.mount("https://", adapter)
-    session.headers.update({"User-Agent": "Mozilla/5.0 Loto649/coverage-v1",
+    session.headers.update({"User-Agent": "Mozilla/5.0 Loto649/coverage-v2",
                             "Accept": "text/html", "Cache-Control": "no-cache"})
     return session
-
-
-def valid_draw(numbers):
-    return (len(numbers) == 6 and len(set(numbers)) == 6
-            and all(type(n) is int and 1 <= n <= 49 for n in numbers))
-
-
-def normalize_draws(draws):
-    """Aceeasi deduplicare si ordonare ca site-ul, inclusiv extrageri speciale."""
-    unique = {}
-    today = datetime.now(ZoneInfo("Europe/Bucharest")).date().isoformat()
-    for draw in draws:
-        day = draw["date"]
-        if not isinstance(day, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
-            raise LotoDataExtractionError("Data invalida in istoric.")
-        date.fromisoformat(day)
-        numbers = sorted(draw["numbers"])
-        if not valid_draw(numbers):
-            raise LotoDataExtractionError("Extragere invalida in istoric.")
-        if day > today:
-            raise LotoDataExtractionError("Arhiva contine date viitoare invalide.")
-        unique[(day, ",".join(map(str, numbers)))] = {"date": day, "numbers": numbers}
-    return [unique[key] for key in sorted(unique)]
-
-
-def extract_draws_from_html(html):
-    # Nu depinde de <tr>: ultima extragere poate fi publicata fara acest tag.
-    pattern = re.compile(r"<td\b[^>]*>([\s\S]*?)</td>\s*"
-                         r"((?:<td\b[^>]*>[\s\S]*?</td>\s*){6})", re.I)
-    rows = []
-    for match in pattern.finditer(html):
-        day = BeautifulSoup(match[1], "html.parser").get_text().strip()
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
-            continue
-        cells = re.findall(r"<td\b[^>]*>([\s\S]*?)</td>", match[2], re.I)
-        values = [BeautifulSoup(cell, "html.parser").get_text().strip() for cell in cells]
-        if not all(re.fullmatch(r"\d+", value) for value in values):
-            continue
-        numbers = sorted(map(int, values))
-        if valid_draw(numbers):
-            rows.append({"date": day, "numbers": numbers})
-    return rows
 
 
 def download_all_loto_data(config):
@@ -123,9 +76,9 @@ def download_all_loto_data(config):
             if index > 1:
                 time.sleep(config.sleep_between_requests)
             try:
-                response = session.get(url, timeout=config.request_timeout)
+                response = session.get(archive_request_url(url, time.time_ns()), timeout=config.request_timeout)
                 response.raise_for_status()
-                parsed = extract_draws_from_html(response.text)
+                parsed = extract_draws_from_html(response.text, response.url)
             except requests.RequestException as exc:
                 raise LotoDataExtractionError(
                     f"Arhiva indisponibila: {url}. Generarea cu istoric partial este oprita."
@@ -152,12 +105,16 @@ def random649(seed):
     return random
 
 
-def history_hash(draws):
-    text = ";".join(f"{d['date']}:{','.join(map(str, d['numbers']))}" for d in draws)
+def hash_text(text):
     value = 2166136261
     for character in text:
         value = ((value ^ ord(character)) * 16777619) & MASK
     return value
+
+
+def history_hash(draws):
+    text = ";".join(f"{d['date']}:{','.join(map(str, d['numbers']))}" for d in draws)
+    return hash_text(text)
 
 
 def accumulator(draws=()):
@@ -287,6 +244,8 @@ def model_from_state(state, config):
 def analyse649(draws, fixed_config=None):
     if not draws:
         raise LotoDataExtractionError("Istoricul 6/49 este gol.")
+    for draw in draws:
+        _assert_draw649(draw)
     config = fixed_config if fixed_config is not None else calibrate649(draws)
     model = model_from_state(accumulator(draws), config)
     ranked = sorted(UNIVERSE, key=lambda n: (-model["frequency"][n], n))
@@ -306,7 +265,8 @@ def analyse649(draws, fixed_config=None):
         ("ip", [f"{p['odd']}/{p['even']}" for p in profiles]),
     ):
         target[name], target[name + "_p"] = mode(values)
-    model.update(target_profile=target, historySeed=history_hash(draws))
+    model.update(target_profile=target, historySeed=history_hash(draws),
+                 cycle_date=max(draw["date"] for draw in draws))
     return model
 
 
@@ -352,26 +312,58 @@ def check_options(n, seed, extra):
         raise ValueError("Extinderea trebuie sa fie intre 0 si 10 numere suplimentare.")
 
 
-def generate649(model, n=6, seed=649, extra9=1):
+def permutation649(numbers, random):
+    shuffled = list(numbers)
+    for i in range(len(shuffled) - 1, 0, -1):
+        j = math.floor(random() * (i + 1))
+        shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+    return shuffled
+
+
+def remaining_coverage649(shuffled, random):
+    """48 linii afine ramase; oricare doua au cel mult un punct comun."""
+    def cell(x, y):
+        return shuffled[y * 6 + x if x < 6 else 42 + y if y < 6 else 48]
+    lines = [[cell(x, y) for y in range(7)] for x in range(6)]
+    for slope in range(1, 7):
+        for intercept in range(7):
+            lines.append([cell(x, (slope * x + intercept) % 7) for x in range(7)])
+    result = []
+    for line in permutation649(lines, random):
+        omit = math.floor(random() * len(line))
+        result.append(sorted(number for index, number in enumerate(line) if index != omit))
+    return result
+
+
+def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
     check_options(n, seed, extra9)
-    random = random649(seed ^ model["historySeed"])
-    extension_random = random649(seed ^ model["historySeed"] ^ 0xA5A5A5A5)
+    cycle_date = model.get("cycle_date")
+    if not _valid_day(cycle_date):
+        raise ValueError("Generarea necesita data ultimei extrageri istorice valide.")
+    cycle = f"{ENGINE_VERSION}|{cycle_date}|{seed}"
+    random = random649(hash_text(f"{cycle}|base"))
+    scores = model["scores"] if diagnostic else [1] * 50
+    shuffled = None if diagnostic else permutation649(UNIVERSE, random)
+    remaining = None if diagnostic else remaining_coverage649(shuffled, random)
     selected, union = [], set()
-    for _ in range(n):
+    for index in range(n):
         best, quality = None, -math.inf
-        for _ in range(128):
-            ticket = sample(UNIVERSE, 6, model["scores"], random)
-            if any(common(previous, ticket) > MAX_SHARED for previous in selected):
-                continue
-            if model["config"]["filter"] and not valid_profile(ticket):
-                continue
-            fresh = sum(number not in union for number in ticket)
-            overlap = sum(common(previous, ticket) for previous in selected)
-            candidate_quality = fresh * 10 - overlap + pair_support(ticket, model)
-            if candidate_quality > quality:
-                best, quality = ticket, candidate_quality
-            if fresh == 6 and not model["config"]["pairInfluence"]:
-                break
+        if not diagnostic:
+            best = sorted(shuffled[index * 6:index * 6 + 6]) if index < 8 else remaining[index - 8]
+        else:
+            for _ in range(128):
+                ticket = sample(UNIVERSE, 6, scores, random)
+                if any(common(previous, ticket) > MAX_SHARED for previous in selected):
+                    continue
+                if model["config"]["filter"] and not valid_profile(ticket):
+                    continue
+                fresh = sum(number not in union for number in ticket)
+                overlap = sum(common(previous, ticket) for previous in selected)
+                candidate_quality = fresh * 10 - overlap + pair_support(ticket, model)
+                if candidate_quality > quality:
+                    best, quality = ticket, candidate_quality
+                if fresh == 6 and not model["config"]["pairInfluence"]:
+                    break
         if best is None:
             raise ValueError("Nu s-a gasit un pachet cu suprapunere de maximum 2. Foloseste alt seed sau mai putine bilete.")
         selected.append(best)
@@ -381,47 +373,157 @@ def generate649(model, n=6, seed=649, extra9=1):
         profile = draw_profile(nums)
         tickets.append({"nums": nums, "sum": profile["sum"],
                         "ip": f"{profile['odd']}/{profile['even']}", "shape": profile["shape"]})
-    extensions = [sorted(ticket + sample([n for n in UNIVERSE if n not in ticket], extra9,
-                                         model["scores"], extension_random)) for ticket in selected]
+    extensions = []
+    for index, ticket in enumerate(selected):
+        extension_random = random649(hash_text(f"{cycle}|extra|{index}"))
+        extensions.append(sorted(ticket + sample([number for number in UNIVERSE if number not in ticket],
+                                                 extra9, scores, extension_random)))
     overlaps = [common(a, b) for a, b in itertools.combinations(selected, 2)]
     return {"tickets": tickets, "extensions": extensions,
+            "generation": {"mode": "diagnostic" if diagnostic else GENERATION_MODE,
+                           "cycle_date": cycle_date, "seed": seed,
+                           "disjoint_prefix": 0 if diagnostic else min(n, 8)},
             "coverage": {"distinct_numbers": len(union), "unique_triples": n * 20,
                          "mean_overlap": mean(overlaps), "max_overlap": max(overlaps, default=0),
                          "max_allowed_overlap": MAX_SHARED}}
 
 
+def generate649(model, n=6, seed=649, extra9=1):
+    """Productie uniforma; calibrarea nu modifica numerele generate."""
+    return _generate_pack649(model, n, seed, extra9)
+
+
+def _valid_day(value):
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return False
+    try:
+        return date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
+
+
+def _valid_numbers649(numbers, minimum=6, maximum=None):
+    maximum = minimum if maximum is None else maximum
+    return (isinstance(numbers, (list, tuple)) and minimum <= len(numbers) <= maximum
+            and all(type(number) is int and 1 <= number <= 49 for number in numbers)
+            and len(set(numbers)) == len(numbers))
+
+
+def _assert_draw649(draw):
+    if (not isinstance(draw, dict) or not _valid_numbers649(draw.get("numbers"))
+            or "joker" in draw):
+        raise ValueError("Evaluarea necesita o extragere 6/49 valida, separata de Joker.")
+
+
+def _chronological_draws649(draws):
+    for draw in draws:
+        _assert_draw649(draw)
+        if not _valid_day(draw.get("date")):
+            raise ValueError("Data extragerii 6/49 este invalida.")
+    return sorted(draws, key=lambda draw: (draw["date"], ",".join(map(str, draw["numbers"]))))
+
+
+def combinations649(n, k=6):
+    if type(n) is not int or type(k) is not int or n < 0 or k < 0 or k > n:
+        return 0
+    return math.comb(n, k)
+
+
+def _hit_metrics(hits, exact=None, paid=None):
+    exact_hits = [hits.count(value) for value in range(7)] if exact is None else exact
+    paid = len(hits) if paid is None else paid
+    result = {"hits": hits, "best_hits": max((min(6, value) for value in hits), default=0),
+              "total_hits": sum(count * hits for hits, count in enumerate(exact_hits)),
+              "variants": paid, "paid_variants": paid, "exact_hits": exact_hits}
+    result.update({f"variants_ge{hits}": sum(exact_hits[hits:]) for hits in (3, 4, 5, 6)})
+    return result
+
+
 def evaluate649(tickets, draw):
-    hits = [common(ticket, draw["numbers"]) for ticket in tickets]
-    return {"hits": hits, "best_hits": max(hits), "total_hits": sum(hits)}
+    _assert_draw649(draw)
+    if not isinstance(tickets, (list, tuple)) or any(not _valid_numbers649(ticket) for ticket in tickets):
+        raise ValueError("Fiecare varianta simpla trebuie sa aiba sase numere distincte intre 1 si 49.")
+    return _hit_metrics([common(ticket, draw["numbers"]) for ticket in tickets])
 
 
-def summary(rows, n, repetitions=1):
-    return {"draws": len(rows) / repetitions,
-            "mean_hits": mean([r["total_hits"] / n for r in rows]),
-            "mean_best": mean([r["best_hits"] for r in rows]),
-            "draws_ge3": sum(r["best_hits"] >= 3 for r in rows) / repetitions,
-            "draws_ge4": sum(r["best_hits"] >= 4 for r in rows) / repetitions,
-            "mean_distinct": mean([r["distinct_numbers"] for r in rows]), "repetitions": repetitions}
+def _combine_systems(systems):
+    exact = [sum(system["exact_hits"][hits] for system in systems) for hits in range(7)]
+    return {**_hit_metrics([hits for system in systems for hits in system["hits"]], exact,
+                          sum(system["paid_variants"] for system in systems)),
+            "systems": len(systems), "per_system": systems}
 
 
-def benchmark(tests, n, seed):
-    random, scores, rows = random649(seed ^ 0x35F876), [1] * 50, []
-    for _ in range(20):
+def evaluateSystem649(extensions, draw):
+    _assert_draw649(draw)
+    if (not isinstance(extensions, (list, tuple))
+            or any(not _valid_numbers649(ticket, 6, 16) for ticket in extensions)):
+        raise ValueError("Un sistem 6/49 trebuie sa contina intre 6 si 16 numere distincte.")
+    systems = []
+    for ticket in extensions:
+        hits = common(ticket, draw["numbers"])
+        exact = [combinations649(hits, value) * combinations649(len(ticket) - hits, 6 - value)
+                 for value in range(7)]
+        systems.append({**_hit_metrics([hits], exact, combinations649(len(ticket))),
+                        "size": len(ticket), "matched_numbers": hits, "distinct_numbers": len(ticket)})
+    return _combine_systems(systems)
+
+
+def summary(rows, n, repetitions=1, include_positions=True):
+    total_paid = sum(row["paid_variants"] for row in rows)
+    result = {"draws": len(rows) / repetitions,
+              "mean_hits": mean([row["total_hits"] / row["paid_variants"] if row["paid_variants"] else 0 for row in rows]),
+              "mean_best": mean([row["best_hits"] for row in rows]),
+              "exact_hits": [sum(row["exact_hits"][hits] for row in rows) / repetitions for hits in range(7)],
+              "paid_variants": mean([row["paid_variants"] for row in rows]),
+              "total_paid_variants": total_paid / repetitions,
+              "mean_distinct": mean([row.get("distinct_numbers", 0) for row in rows]), "repetitions": repetitions}
+    for hits in (3, 4, 5, 6):
+        winners = sum(row[f"variants_ge{hits}"] for row in rows)
+        result[f"draws_ge{hits}"] = sum(row["best_hits"] >= hits for row in rows) / repetitions
+        result[f"variants_ge{hits}"] = winners / repetitions
+        result[f"rate_ge{hits}"] = winners / total_paid if total_paid else 0
+    if include_positions:
+        def subset(row, start, end):
+            metrics = (_combine_systems(row["per_system"][start:end]) if "per_system" in row
+                       else _hit_metrics(row["hits"][start:end]))
+            return {**metrics, "distinct_numbers": 0}
+        result["positions"] = [{"position": index + 1,
+                                **summary([subset(row, index, index + 1) for row in rows if len(row["hits"]) > index],
+                                          1, repetitions, False)} for index in range(min(6, n))]
+        result["group_3_5"] = summary([subset(row, 2, 5) for row in rows if len(row["hits"]) >= 5], 3, repetitions, False)
+    return result
+
+
+def benchmark(tests, n, seed, extra9=1, diversified=False):
+    random, scores, rows, extended_rows = random649(seed ^ 0x35F876), [1] * 50, [], []
+    extension_random = random649(seed ^ 0xA519E4)
+    for repeat in range(20):
         for target in tests:
-            tickets, seen = [], set()
-            while len(tickets) < n:
-                ticket = sample(UNIVERSE, 6, scores, random)
-                key = tuple(ticket)
-                if key not in seen:
-                    seen.add(key)
-                    tickets.append(ticket)
+            if diversified:
+                pack = generate649({"cycle_date": target["training_cutoff"]}, n,
+                                   hash_text(f"{seed}|uniform-reference|{repeat}"), extra9)
+                tickets, extensions = [ticket["nums"] for ticket in pack["tickets"]], pack["extensions"]
+            else:
+                tickets, seen = [], set()
+                while len(tickets) < n:
+                    ticket = sample(UNIVERSE, 6, scores, random)
+                    key = tuple(ticket)
+                    if key not in seen:
+                        seen.add(key)
+                        tickets.append(ticket)
+                extensions = [ticket + sample([number for number in UNIVERSE if number not in ticket],
+                                               extra9, scores, extension_random) for ticket in tickets]
             rows.append({**evaluate649(tickets, target),
                          "distinct_numbers": len(set(itertools.chain.from_iterable(tickets)))})
-    return summary(rows, n, 20)
+            if extra9:
+                extended_rows.append({**evaluateSystem649(extensions, target),
+                                      "distinct_numbers": len(set(itertools.chain.from_iterable(extensions)))})
+    return {"simple": summary(rows, n, 20), "extended": summary(extended_rows, n, 20)}
 
 
-def backtest649(draws, n=3, seed=649, window=500, diagnostics=False):
-    check_options(n, seed, 0)
+def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1):
+    draws = _chronological_draws649(draws)
+    check_options(n, seed, extra9)
     if type(window) is not int or not 1 <= window <= 500:
         raise ValueError("Fereastra de backtest trebuie sa fie intre 1 si 500.")
     start = max(260, len(draws) - window)
@@ -430,34 +532,41 @@ def backtest649(draws, n=3, seed=649, window=500, diagnostics=False):
     while start > 0 and draws[start - 1]["date"] == draws[start]["date"]:
         start -= 1
     calibration = calibrate649(draws[:start])
-    state, past = accumulator(draws[:start]), list(draws[:start])
-    rows, diagnostic_rows = [], {"frequency": [], "delay": [], "filter": []}
+    state = accumulator(draws[:start])
+    rows, extended_rows, diagnostic_rows = [], [], {"frequency": [], "delay": [], "filter": []}
     for cursor, end in day_groups(draws, start):
-        model = {**model_from_state(state, calibration), "historySeed": history_hash(past)}
-        generated = generate649(model, n, seed, 0)
+        model = {**model_from_state(state, calibration), "cycle_date": draws[cursor - 1]["date"]}
+        generated = generate649(model, n, seed, extra9)
         variants = {}
         if diagnostics:
             for name, change in (("frequency", {"frequencyInfluence": 0.5}),
                                  ("delay", {"delayInfluence": 0.3}), ("filter", {"filter": True})):
-                variant = {**model_from_state(state, {**calibration, **change}), "historySeed": model["historySeed"]}
-                variants[name] = generate649(variant, n, seed, 0)
+                variant = {**model_from_state(state, {**calibration, **change}), "cycle_date": model["cycle_date"]}
+                variants[name] = _generate_pack649(variant, n, seed, 0, diagnostic=True)
         for target in draws[cursor:end]:
-            rows.append({"date": target["date"], "numbers": target["numbers"],
+            rows.append({"date": target["date"], "numbers": target["numbers"], "training_cutoff": model["cycle_date"],
                          **evaluate649([t["nums"] for t in generated["tickets"]], target),
                          "distinct_numbers": generated["coverage"]["distinct_numbers"]})
+            if extra9:
+                extended_rows.append({"date": target["date"], **evaluateSystem649(generated["extensions"], target),
+                                      "distinct_numbers": len(set(itertools.chain.from_iterable(generated["extensions"])))})
             for name, pack in variants.items():
                 diagnostic_rows[name].append({**evaluate649([t["nums"] for t in pack["tickets"]], target),
                                               "distinct_numbers": pack["coverage"]["distinct_numbers"]})
         for target in draws[cursor:end]:
             append(state, target)
-            past.append(target)
-    return {"engine": ENGINE_VERSION, "n": n, "seed": seed,
+    reference = benchmark(rows, n, seed, extra9)
+    diversified = benchmark(rows, n, seed, extra9, diversified=True)
+    return {"engine": ENGINE_VERSION, "generation_mode": GENERATION_MODE, "evaluation_version": EVALUATION_VERSION,
+            "n": n, "extra9": extra9, "seed": seed,
             "first_test": rows[0]["date"], "last_test": rows[-1]["date"],
             "calibration": calibration, "calibration_cutoff": draws[start - 1]["date"],
-            "result": summary(rows, n), "baseline": benchmark(draws[start:], n, seed),
+            "result": summary(rows, n), "extended": summary(extended_rows, n),
+            "baseline": reference["simple"], "baseline_extended": reference["extended"],
+            "diversified_baseline": diversified["simple"], "diversified_baseline_extended": diversified["extended"],
             "diagnostics": {name: summary(r, n) for name, r in diagnostic_rows.items() if r},
             "rows": rows,
-            "methodology": "Validare inainte de test; configuratie inghetata; antrenare numai pe zile anterioare; acelasi numar de variante simple."}
+            "methodology": "Generare uniforma reproductibila prin seed si ultima zi istorica; primele 8 bilete au numere distincte intre ele; calibrarea influenteaza numai comparatiile diagnostice; date de antrenare numai din zile anterioare; referinte uniforme cu acelasi buget; sistemele extra sunt evaluate separat la costul C(k,6) variante simple fiecare."}
 
 
 class CombinedAnalyzer:
@@ -485,7 +594,8 @@ class CombinedAnalyzer:
         config = self.model["config"]
         print(f"\nMotor: {ENGINE_VERSION}; istoric: {len(self.draws)} extrageri")
         print(f"Interval: {self.draws[0]['date']} - {self.draws[-1]['date']}")
-        print(f"Influenta frecventa={config['frequencyInfluence']}, perechi={config['pairInfluence']}, intarziere=0; filtru oprit")
+        print(f"Generare uniforma; ciclu={self.model['cycle_date']}; ponderi active=0; filtru oprit")
+        print(f"Calibrare descriptiva: frecventa={config['frequencyInfluence']}, perechi={config['pairInfluence']}; nu modifica biletele")
         print(f"Validare: {config['validationDraws']} extrageri; {config['criterion']}")
         print("\n=== FRECVENTE ISTORICE (descriptive) ===")
         for item in self.model["top_numbers"]:
@@ -536,7 +646,7 @@ def main(argv=None):
                   "calibration": analyzer.model["config"], **pack}
         if args.backtest is not None:
             print("\nRulez backtestul cronologic si reperul aleatoriu (20 repetari)...")
-            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics)
+            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics, args.extra)
             for key in ("result", "baseline", "diagnostics"):
                 print(f"{key}: {output['backtest'][key]}")
         if args.json:
