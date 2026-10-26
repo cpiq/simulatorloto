@@ -1,0 +1,361 @@
+[
+  {
+    "source": "https://www.loto49.ro/arhiva-superloto.php",
+    "game": "540",
+    "html": "<h2>Rezultate la tragerile Loto 5/40 din perioada 4 Ianuarie 1998 &#8211; 18 Octombrie 2026</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data extragerii-&gt;</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr> <td>2018-12-2</td> <td>35</td> <td>11</td> <td>7</td> <td>37</td> <td>9</td> <td>32</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2018-12-02",
+        "numbers": [
+          7,
+          9,
+          11,
+          32,
+          35,
+          37
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto49.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 Ianuarie 2024 &#8211; 18 Octombrie 2026</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr> <td>2024-03-10</td> <td>39</td> <td>8</td> <td>31</td> <td>9</td> <td>20</td> <td>24</td> </tr><tr bgcolor=\"#e0f0e0\"> <td>2024-03-10</td> <td>10</td> <td>4</td> <td>3</td> <td>12</td> <td>1</td> <td>39</td> </tr><td>2026-10-11</td> <td>13</td> <td>39</td> <td>33</td> <td>34</td> <td>23</td> <td>14</td></tbody></table>",
+    "expected": [
+      {
+        "date": "2024-03-10",
+        "numbers": [
+          8,
+          9,
+          20,
+          24,
+          31,
+          39
+        ]
+      },
+      {
+        "date": "2024-03-10",
+        "numbers": [
+          1,
+          3,
+          4,
+          10,
+          12,
+          39
+        ]
+      },
+      {
+        "date": "2026-10-11",
+        "numbers": [
+          13,
+          14,
+          23,
+          33,
+          34,
+          39
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-joker.php",
+    "game": "joker",
+    "html": "<h2>Rezultate Joker din perioada 1 Ianuarie 2016 si 18 Octombrie 2026</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N1.</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N2.</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N3.</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N4.</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N5.</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#f00\">->+J</span></td> </tr> <tr> <td>2020-03-1</td> <td>20</td> <td>9</td> <td>8</td> <td>42</td> <td>31</td> <td><span style=\"color:#f00\">+ 20</span></td> </tr><td>2026-10-11</td> <td>39</td> <td>20</td> <td>31</td> <td>14</td> <td>5</td> <td><span style=\"color:#f00\">+ 2</span></td></tbody></table>",
+    "expected": [
+      {
+        "date": "2020-03-01",
+        "numbers": [
+          8,
+          9,
+          20,
+          31,
+          42
+        ],
+        "joker": 20
+      },
+      {
+        "date": "2026-10-11",
+        "numbers": [
+          5,
+          14,
+          20,
+          31,
+          39
+        ],
+        "joker": 2
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-joker-2000-2005.php",
+    "game": "joker",
+    "html": "<h2>Rezultate Joker din perioada 14 septembrie 2000 si 31 decembrie 2005</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">J</span></td> </tr> <tr> <td>2000-09-14</td> <td>4</td> <td>30</td> <td>32</td> <td>39</td> <td>27</td> <td><b>7</b></td> </tr><tr bgcolor=\"#e0f0e0\"> <td>2000-09-21</td> <td>9</td> <td>31</td> <td>24</td> <td>41</td> <td>39</td> <td><b>7</b></td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2000-09-14",
+        "numbers": [
+          4,
+          27,
+          30,
+          32,
+          39
+        ],
+        "joker": 7
+      },
+      {
+        "date": "2000-09-21",
+        "numbers": [
+          9,
+          24,
+          31,
+          39,
+          41
+        ],
+        "joker": 7
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-joker-2006-2010.php",
+    "game": "joker",
+    "html": "<h2>Rezultate Joker din perioada 1 ianuarie 2006 si 31 decembrie 2010</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">J</span></td> </tr> <tr bgcolor=\"#e0f0e0\"> <td>2006-01-05</td> <td>3</td> <td>19</td> <td>5</td> <td>41</td> <td>32</td> <td><b>3</b></td> </tr><tr> <td>2006-01-12</td> <td>40</td> <td>39</td> <td>18</td> <td>29</td> <td>14</td> <td><b>19</b></td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2006-01-05",
+        "numbers": [
+          3,
+          5,
+          19,
+          32,
+          41
+        ],
+        "joker": 3
+      },
+      {
+        "date": "2006-01-12",
+        "numbers": [
+          14,
+          18,
+          29,
+          39,
+          40
+        ],
+        "joker": 19
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-joker-2011-2015.php",
+    "game": "joker",
+    "html": "<h2>Rezultate Joker din perioada 1 ianuarie 2011 si 31 decembrie 2015</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">N.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">J</span></td> </tr> <tr> <td>2011-01-06</td> <td>33</td> <td>44</td> <td>17</td> <td>9</td> <td>23</td> <td><b>17</b></td> </tr><tr bgcolor=\"#e0f0e0\"> <td>2011-01-09</td> <td>24</td> <td>19</td> <td>18</td> <td>17</td> <td>38</td> <td><b>10</b></td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2011-01-06",
+        "numbers": [
+          9,
+          17,
+          23,
+          33,
+          44
+        ],
+        "joker": 17
+      },
+      {
+        "date": "2011-01-09",
+        "numbers": [
+          17,
+          18,
+          19,
+          24,
+          38
+        ],
+        "joker": 10
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto-6-49-din-perioada-2016-2019.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 ianuarie 2016 &#8211; 31 decembrie 2019</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <td>2016-01-07</td> <td>34</td> <td>26</td> <td>36</td> <td>29</td> <td>11</td> <td>25</td><tr bgcolor=\"#e0f0e0\"> <td>2016-01-10</td> <td>41</td> <td>16</td> <td>14</td> <td>8</td> <td>29</td> <td>47</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2016-01-07",
+        "numbers": [
+          11,
+          25,
+          26,
+          29,
+          34,
+          36
+        ]
+      },
+      {
+        "date": "2016-01-10",
+        "numbers": [
+          8,
+          14,
+          16,
+          29,
+          41,
+          47
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto-6-49-din-perioada-2020-2023.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 ianuarie 2020 &#8211; 31 decembrie 2023</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <td>2020-03-1</td> <td>9</td> <td>49</td> <td>25</td> <td>36</td> <td>38</td> <td>24</td><td>2020-03-8</td> <td>3</td> <td>6</td> <td>39</td> <td>45</td> <td>26</td> <td>21</td><tr bgcolor=\"#e0f0e0\"> <td>2020-03-8</td> <td>8</td> <td>10</td> <td>9</td> <td>45</td> <td>27</td> <td>16</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2020-03-01",
+        "numbers": [
+          9,
+          24,
+          25,
+          36,
+          38,
+          49
+        ]
+      },
+      {
+        "date": "2020-03-08",
+        "numbers": [
+          3,
+          6,
+          21,
+          26,
+          39,
+          45
+        ]
+      },
+      {
+        "date": "2020-03-08",
+        "numbers": [
+          8,
+          9,
+          10,
+          16,
+          27,
+          45
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto49-1993-2000.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 8 august 1993 &#8211; 31 decembrie 2000</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr> <td>1993-08-08</td> <td>38</td> <td>17</td> <td>47</td> <td>25</td> <td>30</td> <td>37</td> </tr><tr bgcolor=\"#e0f0e0\"> <td>1993-08-15</td> <td>6</td> <td>7</td> <td>30</td> <td>17</td> <td>2</td> <td>42</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "1993-08-08",
+        "numbers": [
+          17,
+          25,
+          30,
+          37,
+          38,
+          47
+        ]
+      },
+      {
+        "date": "1993-08-15",
+        "numbers": [
+          2,
+          6,
+          7,
+          17,
+          30,
+          42
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto49-2001-2005.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 ianuarie 2001 &#8211; 31 decembrie 2005</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr bgcolor=\"#e0f0e0\"> <td>2001-01-02</td> <td>16</td> <td>46</td> <td>18</td> <td>15</td> <td>25</td> <td>31</td> </tr><tr> <td>2001-01-07</td> <td>18</td> <td>47</td> <td>45</td> <td>20</td> <td>9</td> <td>39</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2001-01-02",
+        "numbers": [
+          15,
+          16,
+          18,
+          25,
+          31,
+          46
+        ]
+      },
+      {
+        "date": "2001-01-07",
+        "numbers": [
+          9,
+          18,
+          20,
+          39,
+          45,
+          47
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto49-2006-2010.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 ianuarie 2006 &#8211; 31 decembrie 2010</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr> <td>2006-01-01</td> <td>15</td> <td>41</td> <td>35</td> <td>17</td> <td>7</td> <td>20</td> </tr><tr bgcolor=\"#e0f0e0\"> <td>2006-01-08</td> <td>49</td> <td>14</td> <td>33</td> <td>1</td> <td>42</td> <td>34</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2006-01-01",
+        "numbers": [
+          7,
+          15,
+          17,
+          20,
+          35,
+          41
+        ]
+      },
+      {
+        "date": "2006-01-08",
+        "numbers": [
+          1,
+          14,
+          33,
+          34,
+          42,
+          49
+        ]
+      }
+    ]
+  },
+  {
+    "source": "https://www.loto49.ro/arhiva-loto49-2011-2015.php",
+    "game": "649",
+    "html": "<h2>Rezultate la tragerile Loto 6/49 din perioada 1 ianuarie 2011 &#8211; 31 decembrie 2015</h2> <table border=\"3\" cellspacing=\"0\" align=\"center\" bgcolor=\"#ffffff\"> <tbody> <tr> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Data tragerii-></span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.1</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.2</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.3</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.4</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.5</span></td> <td bgcolor=\"#1e4121\"><span style=\"color:#fff\">Nr.6</span></td> </tr> <tr> <td>2011-01-06</td> <td>38</td> <td>7</td> <td>17</td> <td>13</td> <td>25</td> <td>24</td> </tr><tr bgcolor=\"#e0f0e0\"> <td>2011-01-09</td> <td>14</td> <td>6</td> <td>13</td> <td>46</td> <td>37</td> <td>9</td> </tr></tbody></table>",
+    "expected": [
+      {
+        "date": "2011-01-06",
+        "numbers": [
+          7,
+          13,
+          17,
+          24,
+          25,
+          38
+        ]
+      },
+      {
+        "date": "2011-01-09",
+        "numbers": [
+          6,
+          9,
+          13,
+          14,
+          37,
+          46
+        ]
+      }
+    ]
+  }
+]

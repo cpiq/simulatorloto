@@ -1,46 +1,72 @@
-# ChatGPT Sites -> GitHub recovery status (2026-10-26)
+# Sincronizare Loto 6/49 — 26 octombrie 2026
 
-## Scope and source-of-truth
+Aplicația Python reproduce motorul `649-coverage-v2` din versiunea Sites 25,
+publicată pe [simulareloto.ro](https://www.simulareloto.ro/).
+Sursa JavaScript de referință are commitul
+`844a4e5631b6898b51c5e320282e4f65775d7ad3` în proiectul Sites
+`appgprj_6a92dc568b0081919783742cd70bc1f8`.
 
-- Live product: https://www.simulareloto.ro/
-- ChatGPT Sites project: `sites-project://appgprj_6a92dc568b0081919783742cd70bc1f8`
-- GitHub repo: `cpiq/simulatorloto`; `main` last changed 2026-08-29.
-- Most recent known Sites publication: 2026-10-04, version 19 (responsive/mobile fixes). The preceding site version uses a *single* 6/49 engine `649-coverage-v1`.
-- This branch recovers only the Python *equivalent* of the new 6/49 engine from a saved project file. It **does not** contain the full deployed Next.js/TypeScript Sites code, assets, or database state.
-- Do **not** deploy the old Flask frontend from this repository as a replacement for the Sites app. Do **not** infer that the legacy `server.py` serves the live site.
+## Comportament
 
-## Changes captured
+- Implicit: 6 bilete, fiecare cu 6 numere de bază și 1 extra.
+- Cele șase bilete de bază conțin 36 de numere distincte. Primele opt bilete
+  nu se suprapun; sunt acceptate până la 50 de bilete.
+- Numerele sunt alese uniform. Frecvențele, perechile și profilul istoricului
+  sunt descriptive și nu influențează biletele de producție.
+- Versiunea motorului, seedul și ultima dată istorică fixează biletele.
+  Corectarea sau completarea unor extrageri vechi, cu aceeași ultimă dată,
+  nu schimbă biletele ori numerele extra.
+- Schimbarea numărului de bilete păstrează primele bilete; schimbarea numărului
+  de extra păstrează cele șase numere de bază.
+- Arhivele 6/49 sunt identificate prin sursă și tabel. Datele cu lună sau zi
+  fără zero sunt normalizate; rezultatele Joker sunt excluse.
+- Ruta Flask `/api/predict`, interfața și raportul PDF folosesc același motor
+  ca `perplexitymix.py`. Generarea nu are plată sau limită gratuită.
 
-- Replaced the old `perplexitymix.py` engine (scored frequency / delay / pairs) with the recovered `649-coverage-v1` Python port.
-- Defaults aligned to the later published Sites configuration: **6 tickets**, each with **6 primary numbers**, and **1 additional number** for a 7-number extension.
-- Generates variants from all 49 numbers; seeks high distinct-number coverage and limits pairwise overlap to 2 primary numbers.
-- Historical frequency and pair influences are included **only** when their chronological validation passes the engine's significance gate; the delay and profile filter are not treated as default predictors.
-- Added an offline regression test suite for basic generation invariants and 3/6 match counting.
+## Verificare
 
-## Validation
-
-Run from the repository root:
-
-```shell
-python -m pip install -r requirements.txt
+```sh
+python -m pip install flask requests beautifulsoup4 numpy tzdata
 python -m unittest discover -s tests -v
 ```
 
-Local result on 2026-10-26: 6 tests passed. These tests cover reproducibility, 6+1 output, overlap, no duplicate tickets at several seeds, coverage accounting, and exactly 3 winning numbers in an intentionally constructed example.
+Testele compară exact biletele, numerele extra și acoperirea cu rezultate
+produse de JavaScriptul publicat. Fișierul de referință din `tests/fixtures/`
+păstrează versiunea, commitul și SHA-256 al sursei JavaScript. Testele API
+și de parsare rulează fără acces la rețea.
 
-**They do not test the deployed Sites UI/API**, saved user tickets, automatic draw loading, or historical predictions made before the draw.
+Pornire locală a aplicației:
 
-## Open investigation: why no 3/6 lately?
+```sh
+python server.py
+```
 
-1. Obtain the actual deployed Sites repository/build and verify its engine version and defaults against this port.
-2. Verify that historical draws are current and do not include future data for historical backtests.
-3. Compare **saved, immutable predictions created before draw time** against official draw results (not fresh predictions generated after the draw).
-4. Compare the 6-number primary ticket separately from the 7-number extension. A system of 7 numbers comprises 7 six-number combinations and must be compared with an equivalent number of paid simple variants.
-5. Verify number normalization (number versus numeric string) and draw date/timezone matching in the real frontend/API.
-6. Run a walk-forward 500-draw test at 6 tickets per draw, compared with the same-cost uniform baseline. No predictive gain should be claimed without held-out confirmation.
+## Script separat
 
-## Limitations
+`loto649_standalone.py` include parserul și motorul într-un singur fișier:
 
-This branch is a *partial recovery*, not a full backup of ChatGPT Sites. The public page exposed to the available browser tooling is an older indexed version and is **not** authoritative for current source files. GitHub is not yet fully synchronized to the latest deployed site.
+```sh
+python -m pip install requests tzdata
+python loto649_standalone.py
+```
 
-Do not merge into `main` as a complete Sites sync without recovering the missing source.
+Implicit descarcă toate cele șapte arhive și produce 6 bilete + 1 extra.
+Opțiuni: `--n 6 --seed 649 --extra 1 --json rezultat.json`.
+`--history-json istoric.json` folosește un istoric local explicit.
+Pentru a regenera fișierul după modificări:
+
+```sh
+python tools/build_standalone.py
+```
+
+Un test verifică sincronizarea fișierului separat cu sursele și îl execută
+într-un director gol, fără modulele proiectului.
+
+## Publicare și limite
+
+Acest depozit păstrează aplicația Python/Flask. Nu conține baza de date Sites
+și nu importă biletele salvate acolo. Publicarea codului pe GitHub nu pornește
+singură o nouă implementare Python în producție; găzduirea Python se gestionează separat.
+
+Versiunea Sites 25 este deja publicată. Această sincronizare nu o înlocuiește.
+Nu se afirmă un avantaj predictiv sau o garanție de trei potriviri.
