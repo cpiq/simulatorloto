@@ -557,7 +557,8 @@ def benchmark(tests, n, seed, extra9=1, diversified=False):
     return {"simple": summary(rows, n, 20), "extended": summary(extended_rows, n, 20)}
 
 
-def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1):
+def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1,
+                extension_strategy="independent"):
     draws = _chronological_draws649(draws)
     check_options(n, seed, extra9)
     if type(window) is not int or not 1 <= window <= 500:
@@ -572,7 +573,8 @@ def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1):
     rows, extended_rows, diagnostic_rows = [], [], {"frequency": [], "delay": [], "filter": []}
     for cursor, end in day_groups(draws, start):
         model = {**model_from_state(state, calibration), "cycle_date": draws[cursor - 1]["date"]}
-        generated = generate649(model, n, seed, extra9)
+        generated = generate649(model, n, seed, extra9,
+                                extension_strategy=extension_strategy)
         variants = {}
         if diagnostics:
             for name, change in (("frequency", {"frequencyInfluence": 0.5}),
@@ -692,7 +694,8 @@ def main(argv=None):
                   "calibration": analyzer.model["config"], **pack}
         if args.backtest is not None:
             print("\nRulez backtestul cronologic si reperul aleatoriu (20 repetari)...")
-            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics, args.extra)
+            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics,
+                                              args.extra, args.extension_strategy)
             for key in ("result", "baseline", "diagnostics"):
                 print(f"{key}: {output['backtest'][key]}")
         if args.json:
