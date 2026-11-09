@@ -159,10 +159,12 @@
     </details>
     <div class="btnrow">
       <button id="btnGen" onclick="runPredict(false)">Genereaza predictia</button>
+      <button class="ghost" id="btnFocus4" onclick="runPredictFocus4()">Focus 4+ (42 variante simple)</button>
       <button class="ghost" onclick="runPredict(true)">Reincarca istoricul (live)</button>
       <button class="ghost" id="btnPdf" onclick="exportPDF()" disabled style="opacity:.5">Export PDF (raport complet)</button>
       <span class="note" id="predStatus"></span>
     </div>
+    <div class="note">Focus 4+ genereaza 42 variante simple diferite, cu maximum un numar comun intre oricare doua. Probabilitatea de minimum 4/6 pe cel putin o varianta este ~4,146% la o extragere uniforma, nu 100%. Jocul tuturor celor 42 de variante costa de 7 ori mai mult decat 6 variante simple.</div>
     <div class="warn" id="predWarn"></div>
     <div id="predBody" class="hide" style="margin-top:14px">
       <div class="infobox" id="predDataInfo"></div>
@@ -908,6 +910,12 @@ function readVars(){
 function resetVars(){
   document.getElementById('varN').value=6;document.getElementById('varSeed').value=649;document.getElementById('varExtra9').value=1;
 }
+function runPredictFocus4(){
+  // Preset explicit: nu schimba modul implicit si nu garanteaza un castig.
+  document.getElementById('varN').value=42;
+  document.getElementById('varExtra9').value=0;
+  return runPredict(false);
+}
 async function runPredict(force){
   const st=document.getElementById('predStatus'),warn=document.getElementById('predWarn'),button=document.getElementById('btnGen');
   warn.style.display='none';button.disabled=true;
@@ -951,7 +959,8 @@ function renderPrediction(d){
   // bilete
   document.getElementById('predTicketsHead').textContent = `${d.tickets6.length} bilete propuse`;
   const extLen=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+d.params.extra9);
-  document.getElementById('predExtHead').textContent = `Cu extra (${extLen} numere in total)`;
+  document.getElementById('predExtHead').textContent =
+    extLen === 6 ? 'Fara extra (6 numere)' : `Cu extra (${extLen} numere in total)`;
   const tt=document.getElementById('predTickets');tt.innerHTML='';
   d.tickets6.forEach((t,i)=>{
     const t9=d.tickets9[i];
@@ -977,14 +986,25 @@ function renderPrediction(d){
     tt.appendChild(tr);
   });
   const c=d.coverage,p=d.params;
+  // Pentru bilete cu maximum un numar comun, evenimentele de 4+ sunt
+  // disjuncte: fiecare extragere de 6 numere poate aduce 4+ pe cel mult
+  // un bilet. Probabilitate exacta per bilet = 13.804 / 13.983.816.
+  const p4Single = 13804 / 13983816;
+  const separare4 = d.tickets6.length <= 50 && c.max_overlap <= 1;
+  const p4Pack = separare4 ? (100 * d.tickets6.length * p4Single).toFixed(3) + '%' : 'necalculata (suprapunere prea mare)';
+  const costFactor = (d.tickets6.length / 6).toFixed(1).replace('.0','');
   document.getElementById('predCoverage').innerHTML=
     `<div class="kv"><span>Numere distincte in pachet</span><b>${c.distinct_numbers} / 49</b></div>`+
     `<div class="kv"><span>Triplete diferite acoperite</span><b>${c.unique_triples}</b></div>`+
     `<div class="kv"><span>Numere comune intre doua bilete (maxim)</span><b>${c.max_overlap}</b></div>`+
+    `<div class="kv"><span>Varianta simpla: minimum 4/6</span><b>${(100 * p4Single).toFixed(4)}% / bilet</b></div>`+
+    `<div class="kv"><span>Minimum 4/6 pe cel putin un bilet (teoretic)</span><b>${p4Pack}</b></div>`+
+    `<div class="kv"><span>Buget daca joci toate biletele</span><b>${d.tickets6.length} variante, ${costFactor}x fata de 6 simple</b></div>`+
     '<div class="kv"><span>Generare</span><b>Uniforma, fara ponderi istorice</b></div>'+
     `<div class="kv"><span>Data care fixeaza biletele</span><b>${p.cycle_date||d.data.last_date}</b></div>`+
     `<div class="kv"><span>Extindere la ${p.extension_size} numere</span><b>${p.extension_variants} variante simple / extindere completa</b></div>`;
-  document.getElementById('predDisclaimer').textContent='Biletele sunt numerotate in ordinea generarii. Rezultatele viitoare nu sunt garantate.';
+  document.getElementById('predDisclaimer').textContent=
+    'Biletele sunt numerotate in ordinea generarii. Nici algoritmul si nici 42 de variante nu garanteaza 4/6 sau un castig. Probabilitatile sunt calculate pentru o extragere echitabila, independenta.';
 
 }
 
@@ -1061,13 +1081,19 @@ function exportPDF(){
     ['Numere distincte in pachet',d.coverage.distinct_numbers],
     ['Triplete diferite',d.coverage.unique_triples],
     ['Suprapunere maxima',d.coverage.max_overlap],
+    ['Probabilitate 4+ pe cel putin un bilet',
+      d.coverage.max_overlap <= 1
+        ? (100 * d.tickets6.length * 13804 / 13983816).toFixed(3) + '%'
+        : 'necalculata (suprapunere mare)'],
+    ['Variante simple propuse',d.tickets6.length],
+    ['Cost relativ fata de 6 simple',(d.tickets6.length / 6).toFixed(1) + 'x'],
     ['Generare','Uniforma, fara ponderi istorice'],
     ['Data care fixeaza biletele',p.cycle_date||d.data.last_date],
   ]});
   // 6. bilete
   const extLenPdf=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+p.extra9);
   h2(`6. ${d.tickets6.length} bilete propuse (seed ${d.seed})`);
-  tbl({head:[['Bilet','Numere de baza (6)','Suma','I/P','Forma',`Cu extra (${extLenPdf} numere)`]],
+  tbl({head:[['Bilet','Numere de baza (6)','Suma','I/P','Forma',extLenPdf===6?'Fara extra':`Cu extra (${extLenPdf} numere)`]],
     body:d.tickets6.map((t,i)=>[i+1,t.nums.join(', '),t.sum,t.ip,t.shape,(d.tickets9[i]||[]).join(', ')]),
     columnStyles:{1:{cellWidth:120},5:{cellWidth:150}}});
 
