@@ -663,6 +663,8 @@ def main(argv=None):
     parser.add_argument("--backtest", type=int, metavar="EXTRAGERI", help="Backtest cronologic: 1..500")
     parser.add_argument("--diagnostics", action="store_true", help="Comparatii diagnostice in backtest, fara a schimba motorul")
     parser.add_argument("--json", type=Path, help="Salveaza rezultatul si parametrii in JSON")
+    parser.add_argument("--verify-draw", type=str,
+                        help="Verifica seturile fata de 6 numere extrase, separate prin virgula (nu reprezinta backtest)")
     args = parser.parse_args(argv)
     if args.focus4:
         args.n, args.extra = 42, 0
@@ -692,6 +694,25 @@ def main(argv=None):
                   "history": {"total_draws": len(draws), "first_date": draws[0]["date"],
                               "last_date": draws[-1]["date"], "sha256": fingerprint},
                   "calibration": analyzer.model["config"], **pack}
+        if args.verify_draw:
+            try:
+                numbers = [int(value.strip()) for value in args.verify_draw.split(",")]
+            except ValueError:
+                raise ValueError("--verify-draw necesita 6 numere intregi, separate prin virgula.")
+            if not _valid_numbers649(numbers):
+                raise ValueError("--verify-draw necesita exact 6 numere distincte intre 1 si 49.")
+            target = {"date": analyzer.model["cycle_date"], "numbers": sorted(numbers)}
+            simple = evaluate649([row["nums"] for row in pack["tickets"]], target)
+            extended = evaluateSystem649(pack["extensions"], target) if args.extra else None
+            output["verification"] = {
+                "winning_numbers": sorted(numbers),
+                "simple": simple, "extensions_full_systems": extended,
+                "caveat": "Verificarea nu demonstreaza ca biletele au fost generate inainte de extragere. Salveaza JSON-ul inainte."
+            }
+            print(f"\nVerificare 6/49: {sorted(numbers)}")
+            print(f"Bilete simple: maxim {simple['best_hits']} potriviri; 3+: {simple['variants_ge3']}; 4+: {simple['variants_ge4']}")
+            if extended is not None:
+                print(f"Sisteme complete: maxim {extended['best_hits']} potriviri; 4+: {extended['variants_ge4']} variante platite")
         if args.backtest is not None:
             print("\nRulez backtestul cronologic si reperul aleatoriu (20 repetari)...")
             output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics,
