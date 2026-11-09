@@ -335,8 +335,13 @@ def remaining_coverage649(shuffled, random):
     return result
 
 
-def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
+def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False,
+                      extension_strategy="independent"):
     check_options(n, seed, extra9)
+    if extension_strategy not in ("independent", "disjoint7"):
+        raise ValueError("extension_strategy trebuie sa fie independent sau disjoint7.")
+    if extension_strategy == "disjoint7" and (diagnostic or extra9 != 1 or n > 6):
+        raise ValueError("disjoint7 necesita 1..6 bilete, extra9=1 si mod de productie.")
     cycle_date = model.get("cycle_date")
     if not _valid_day(cycle_date):
         raise ValueError("Generarea necesita data ultimei extrageri istorice valide.")
@@ -373,24 +378,55 @@ def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
         profile = draw_profile(nums)
         tickets.append({"nums": nums, "sum": profile["sum"],
                         "ip": f"{profile['odd']}/{profile['even']}", "shape": profile["shape"]})
+    # Optional 4+ diversity strategy for fully played seven-number systems.
+    # Default preserves the existing published JavaScript golden outputs.
+    # For n <= 6 and extra9 == 1 the opt-in places each extra outside ALL
+    # six base tickets and outside every other reserved extra (42 distinct).
+    reserved_extras = []
+    if extension_strategy == "disjoint7":
+        shuffled_extras = permutation649(
+            shuffled[36:], random649(hash_text(f"{cycle}|disjoint7|reserved")))
+        reserved_extras = shuffled_extras[:n]
     extensions = []
     for index, ticket in enumerate(selected):
         extension_random = random649(hash_text(f"{cycle}|extra|{index}"))
-        extensions.append(sorted(ticket + sample([number for number in UNIVERSE if number not in ticket],
-                                                 extra9, scores, extension_random)))
+        first_extra = [reserved_extras[index]] if reserved_extras else []
+        available = [number for number in UNIVERSE
+                     if number not in ticket and number not in first_extra]
+        additional = sample(available, extra9 - len(first_extra), scores, extension_random)
+        extensions.append(sorted(ticket + first_extra + additional))
     overlaps = [common(a, b) for a, b in itertools.combinations(selected, 2)]
-    return {"tickets": tickets, "extensions": extensions,
-            "generation": {"mode": "diagnostic" if diagnostic else GENERATION_MODE,
-                           "cycle_date": cycle_date, "seed": seed,
-                           "disjoint_prefix": 0 if diagnostic else min(n, 8)},
-            "coverage": {"distinct_numbers": len(union), "unique_triples": n * 20,
-                         "mean_overlap": mean(overlaps), "max_overlap": max(overlaps, default=0),
-                         "max_allowed_overlap": MAX_SHARED}}
+    result = {"tickets": tickets, "extensions": extensions,
+              "generation": {"mode": "diagnostic" if diagnostic else GENERATION_MODE,
+                             "cycle_date": cycle_date, "seed": seed,
+                             "disjoint_prefix": 0 if diagnostic else min(n, 8)},
+              "coverage": {"distinct_numbers": len(union), "unique_triples": n * 20,
+                           "mean_overlap": mean(overlaps), "max_overlap": max(overlaps, default=0),
+                           "max_allowed_overlap": MAX_SHARED}}
+    if extension_strategy == "disjoint7":
+        p4_simple = sum(math.comb(6, k)*math.comb(43, 6-k)
+                        for k in range(4, 7)) / math.comb(49, 6)
+        p4_seven = sum(math.comb(7, k)*math.comb(42, 6-k)
+                       for k in range(4, 7)) / math.comb(49, 6)
+        result["generation"]["extension_strategy"] = "disjoint7"
+        result["coverage"].update(
+            disjoint7_systems=n,
+            disjoint7_distinct_numbers=len(set(itertools.chain.from_iterable(extensions))),
+            paid_simple_variants=7*n,
+            probability_ge4_disjoint7=n*p4_seven,
+            probability_ge4_equal_budget_simple=7*n*p4_simple,
+            guaranteed_ge4=False)
+    return result
 
 
-def generate649(model, n=6, seed=649, extra9=1):
-    """Productie uniforma; calibrarea nu modifica numerele generate."""
-    return _generate_pack649(model, n, seed, extra9)
+def generate649(model, n=6, seed=649, extra9=1, extension_strategy="independent"):
+    """Productie uniforma, cu extindere coordonata optionala pentru 4+.
+
+    Pentru cost egal, 7*n bilete simple separate sunt mai eficiente pentru
+    4+ decat n sisteme complete de cate sapte numere.
+    """
+    return _generate_pack649(model, n, seed, extra9,
+                             extension_strategy=extension_strategy)
 
 
 def _valid_day(value):
@@ -521,7 +557,8 @@ def benchmark(tests, n, seed, extra9=1, diversified=False):
     return {"simple": summary(rows, n, 20), "extended": summary(extended_rows, n, 20)}
 
 
-def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1):
+def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1,
+                extension_strategy="independent"):
     draws = _chronological_draws649(draws)
     check_options(n, seed, extra9)
     if type(window) is not int or not 1 <= window <= 500:
@@ -536,7 +573,8 @@ def backtest649(draws, n=6, seed=649, window=500, diagnostics=False, extra9=1):
     rows, extended_rows, diagnostic_rows = [], [], {"frequency": [], "delay": [], "filter": []}
     for cursor, end in day_groups(draws, start):
         model = {**model_from_state(state, calibration), "cycle_date": draws[cursor - 1]["date"]}
-        generated = generate649(model, n, seed, extra9)
+        generated = generate649(model, n, seed, extra9,
+                                extension_strategy=extension_strategy)
         variants = {}
         if diagnostics:
             for name, change in (("frequency", {"frequencyInfluence": 0.5}),
@@ -616,11 +654,20 @@ def main(argv=None):
     parser.add_argument("--n", type=int, default=6, help="Numar bilete: 1..50 (implicit 6)")
     parser.add_argument("--seed", type=int, default=649, help="Seed: 0..4294967295")
     parser.add_argument("--extra", type=int, default=1, help="Numere suplimentare: 0..10 (implicit 1)")
+    parser.add_argument("--focus4", action="store_true",
+                        help="Preset 42 variante simple, fara extra: cost de 7 ori fata de sase simple")
+    parser.add_argument("--extension-strategy", choices=("independent", "disjoint7"),
+                        default="independent",
+                        help="disjoint7: 1..6 sisteme COMPLETE de 7 numere, 7 variante platite per sistem")
     parser.add_argument("--history-json", type=Path, help="Istoric local explicit, lista date/numbers; altfel descarca toate arhivele")
     parser.add_argument("--backtest", type=int, metavar="EXTRAGERI", help="Backtest cronologic: 1..500")
     parser.add_argument("--diagnostics", action="store_true", help="Comparatii diagnostice in backtest, fara a schimba motorul")
     parser.add_argument("--json", type=Path, help="Salveaza rezultatul si parametrii in JSON")
+    parser.add_argument("--verify-draw", type=str,
+                        help="Verifica seturile fata de 6 numere extrase, separate prin virgula (nu reprezinta backtest)")
     args = parser.parse_args(argv)
+    if args.focus4:
+        args.n, args.extra = 42, 0
     try:
         check_options(args.n, args.seed, args.extra)
         if args.backtest is not None and not 1 <= args.backtest <= 500:
@@ -630,7 +677,8 @@ def main(argv=None):
                  if args.history_json else download_all_loto_data(config))
         analyzer = CombinedAnalyzer(draws).fit()
         analyzer.report()
-        pack = analyzer.generate_tickets(args.n, args.seed, args.extra)
+        pack = generate649(analyzer.model, args.n, args.seed, args.extra,
+                           extension_strategy=args.extension_strategy)
         print(f"\n=== {args.n} BILETE (seed {args.seed}) ===")
         for index, ticket in enumerate(pack["tickets"], 1):
             print(f"Bilet {index:2d}: {ticket['nums']} | suma={ticket['sum']} I/P={ticket['ip']} forma={ticket['shape']}")
@@ -640,13 +688,35 @@ def main(argv=None):
             print(f"Extindere {index:2d}: {extension}")
         fingerprint = hashlib.sha256(json.dumps(draws, separators=(",", ":")).encode()).hexdigest()
         output = {"engine": ENGINE_VERSION, "generated_at": datetime.now(ZoneInfo("Europe/Bucharest")).isoformat(),
-                  "parameters": {"n": args.n, "seed": args.seed, "extra9": args.extra},
+                  "parameters": {"n": args.n, "seed": args.seed, "extra9": args.extra,
+                                 "focus4": args.focus4,
+                                 "extension_strategy": args.extension_strategy},
                   "history": {"total_draws": len(draws), "first_date": draws[0]["date"],
                               "last_date": draws[-1]["date"], "sha256": fingerprint},
                   "calibration": analyzer.model["config"], **pack}
+        if args.verify_draw:
+            try:
+                numbers = [int(value.strip()) for value in args.verify_draw.split(",")]
+            except ValueError:
+                raise ValueError("--verify-draw necesita 6 numere intregi, separate prin virgula.")
+            if not _valid_numbers649(numbers):
+                raise ValueError("--verify-draw necesita exact 6 numere distincte intre 1 si 49.")
+            target = {"date": analyzer.model["cycle_date"], "numbers": sorted(numbers)}
+            simple = evaluate649([row["nums"] for row in pack["tickets"]], target)
+            extended = evaluateSystem649(pack["extensions"], target) if args.extra else None
+            output["verification"] = {
+                "winning_numbers": sorted(numbers),
+                "simple": simple, "extensions_full_systems": extended,
+                "caveat": "Verificarea nu demonstreaza ca biletele au fost generate inainte de extragere. Salveaza JSON-ul inainte."
+            }
+            print(f"\nVerificare 6/49: {sorted(numbers)}")
+            print(f"Bilete simple: maxim {simple['best_hits']} potriviri; 3+: {simple['variants_ge3']}; 4+: {simple['variants_ge4']}")
+            if extended is not None:
+                print(f"Sisteme complete: maxim {extended['best_hits']} potriviri; 4+: {extended['variants_ge4']} variante platite")
         if args.backtest is not None:
             print("\nRulez backtestul cronologic si reperul aleatoriu (20 repetari)...")
-            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics, args.extra)
+            output["backtest"] = backtest649(draws, args.n, args.seed, args.backtest, args.diagnostics,
+                                              args.extra, args.extension_strategy)
             for key in ("result", "baseline", "diagnostics"):
                 print(f"{key}: {output['backtest'][key]}")
         if args.json:
