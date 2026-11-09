@@ -88,5 +88,59 @@ assert(!html.includes('records649'));assert(!html.includes('predMarkov"'));
 """)
 
 
+    def test_focus4_ui_preset_generates_42_simple_and_shows_actual_odds(self):
+        self.run_javascript(r"""
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const html=fs.readFileSync('index.html','utf8');
+assert(html.includes('id="btnFocus4"'));
+assert(html.includes('onclick="runPredictFocus4()"'));
+const ids=['varN','varSeed','varExtra9','predStatus','predWarn','btnGen','btnPdf'];
+const elements=Object.fromEntries(ids.map(id=>[id,{value:'',style:{},disabled:false}]));
+elements.varN.value='6';elements.varSeed.value='649';elements.varExtra9.value='1';
+const requests=[];
+const context=vm.createContext({document:{getElementById:id=>elements[id]},URLSearchParams,PRED_API:'',
+  fetch:async url=>{requests.push(new URL(url,'https://example.test'));return {ok:true,json:async()=>({params:{n:42}})};},
+  renderPrediction:()=>{}});
+vm.runInContext(html.slice(html.indexOf('function readVars(){'),html.indexOf('function renderPrediction(d){')),context);
+await vm.runInContext('runPredictFocus4()',context);
+assert.equal(elements.varN.value,42);
+assert.equal(elements.varExtra9.value,0);
+assert.equal(requests.length,1);
+assert.equal(requests[0].pathname,'/api/predict');
+assert.equal(requests[0].searchParams.get('n'),'42');
+assert.equal(requests[0].searchParams.get('extra9'),'0');
+assert.equal(requests[0].searchParams.get('seed'),'649');
+vm.runInContext('resetVars()',context);
+assert.equal(elements.varN.value,6);
+assert.equal(elements.varExtra9.value,1);
+const mock={
+  seed:649,
+  data:{total_draws:2650,first_date:'1993-08-08',last_date:'2026-11-08'},
+  params:{n:42,extra9:0,cycle_date:'2026-11-08',extension_size:6,extension_variants:1},
+  coverage:{distinct_numbers:49,unique_triples:840,max_overlap:1},
+  tickets6:Array.from({length:42},(_,i)=>({nums:[1,2,3,4,5,6],sum:21,ip:'3/3',shape:'balanced'})),
+  tickets9:Array.from({length:42},()=>[1,2,3,4,5,6]),
+  target_profile:{sum:'100-150',sum_p:.5,max:'40-49',max_p:.5,shape:'balanced',shape_p:.5,ip:'3/3',ip_p:.5},
+  top_pairs:[],top_numbers:[],
+};
+class Element{
+  constructor(){this.children=[];this.style={};this.classList={remove(){}};this.value='';}
+  set innerHTML(s){this.html=s;this.children=[...s.matchAll(/<td\b/g)].map(()=>new Element());}
+  get innerHTML(){return this.html||'';}
+  appendChild(child){this.children.push(child);}
+}
+const els=new Map(),element=id=>{if(!els.has(id))els.set(id,new Element());return els.get(id);};
+const ui=vm.createContext({document:{getElementById:element,createElement:()=>new Element()},fmt:String,SCHEME_CODE_BY_N:{}});
+vm.runInContext(html.slice(html.indexOf('function renderPrediction(d){'),html.indexOf('// trimite un bilet generat')),ui);
+ui.renderPrediction(mock);
+assert(element('predCoverage').innerHTML.includes('4.146%'));
+assert(element('predCoverage').innerHTML.includes('42 variante, 7x'));
+assert(element('predExtHead').textContent.includes('Fara extra'));
+assert(element('predDisclaimer').textContent.includes('nu garanteaza'));
+""")
+
+
 if __name__ == "__main__":
     unittest.main()
