@@ -1,0 +1,33 @@
+name: Loto 6-49 Python validation
+
+on:
+  push:
+    branches:
+      - feat/649-seven-system-4plus-coverage-20261109
+  pull_request:
+    paths:
+      - 'perplexitymix.py'
+      - 'loto_archive_parser.py'
+      - 'loto649_standalone.py'
+      - 'tests/**'
+      - '.github/workflows/loto-649-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install testing dependencies
+        run: python -m pip install requests flask beautifulsoup4 numpy scipy tzdata
+      - name: Compile Python modules
+        run: python -m compileall -q perplexitymix.py loto_archive_parser.py loto649_standalone.py tests
+      - name: Test all loto regression cases
+        run: python -m unittest discover -s tests -v
