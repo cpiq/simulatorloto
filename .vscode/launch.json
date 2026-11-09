@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Loto 6/49 - 6 bilete simple",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/loto649_standalone.py",
+      "console": "integratedTerminal",
+      "args": ["--n", "6", "--extra", "0", "--json", "bilete_6.json"]
+    },
+    {
+      "name": "Loto 6/49 - Focus 4+ (42 simple)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/loto649_standalone.py",
+      "console": "integratedTerminal",
+      "args": ["--focus4", "--json", "bilete_focus4.json"]
+    },
+    {
+      "name": "Loto 6/49 - 6 sisteme complete 7",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/loto649_standalone.py",
+      "console": "integratedTerminal",
+      "args": ["--n", "6", "--extra", "1", "--extension-strategy", "disjoint7", "--json", "sisteme_7.json"]
+    }
+  ]
+}
