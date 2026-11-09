@@ -373,11 +373,23 @@ def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
         profile = draw_profile(nums)
         tickets.append({"nums": nums, "sum": profile["sum"],
                         "ip": f"{profile['odd']}/{profile['even']}", "shape": profile["shape"]})
+    # Target 4+: make the first six 7-number systems pairwise disjoint.
+    # With 6 groups of 7, 42 distinct numbers fit in 1..49. This attains
+    # the maximum union probability for >=4 matches at this system budget.
+    # It does NOT make any outcome predictable or guarantee a prize.
+    # Reserve extras outside the first six simple tickets, independently
+    # of the requested ticket count, to preserve stable ticket prefixes.
+    reserved_extras = (permutation649(shuffled[36:], random649(hash_text(f"{cycle}|extra-reserve")))
+                       if not diagnostic else [])
     extensions = []
     for index, ticket in enumerate(selected):
         extension_random = random649(hash_text(f"{cycle}|extra|{index}"))
-        extensions.append(sorted(ticket + sample([number for number in UNIVERSE if number not in ticket],
-                                                 extra9, scores, extension_random)))
+        first_extra = ([reserved_extras[index]] if extra9 > 0 and not diagnostic and index < 6
+                       else [])
+        available = [number for number in UNIVERSE
+                     if number not in ticket and number not in first_extra]
+        additional = sample(available, extra9 - len(first_extra), scores, extension_random)
+        extensions.append(sorted(ticket + first_extra + additional))
     overlaps = [common(a, b) for a, b in itertools.combinations(selected, 2)]
     return {"tickets": tickets, "extensions": extensions,
             "generation": {"mode": "diagnostic" if diagnostic else GENERATION_MODE,
@@ -385,7 +397,17 @@ def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
                            "disjoint_prefix": 0 if diagnostic else min(n, 8)},
             "coverage": {"distinct_numbers": len(union), "unique_triples": n * 20,
                          "mean_overlap": mean(overlaps), "max_overlap": max(overlaps, default=0),
-                         "max_allowed_overlap": MAX_SHARED}}
+                         "max_allowed_overlap": MAX_SHARED,
+                         "probability_ge4_simple": n * (sum(
+                             math.comb(6, k) * math.comb(43, 6 - k)
+                             for k in range(4, 7)) / math.comb(49, 6)),
+                         "probability_ge4_seven_system": (
+                             n * sum(math.comb(7, k) * math.comb(42, 6 - k)
+                                     for k in range(4, 7)) / math.comb(49, 6)
+                             if not diagnostic and n <= 6 and extra9 == 1 else None),
+                         "seven_system_paid_variants": (7 * n if extra9 == 1 else None),
+                         "seven_system_disjoint": (not diagnostic and n <= 6 and extra9 == 1),
+                         "guarantees_four_hits": False}}
 
 
 def generate649(model, n=6, seed=649, extra9=1):
