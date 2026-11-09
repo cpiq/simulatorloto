@@ -394,7 +394,8 @@ def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
     return {"tickets": tickets, "extensions": extensions,
             "generation": {"mode": "diagnostic" if diagnostic else GENERATION_MODE,
                            "cycle_date": cycle_date, "seed": seed,
-                           "disjoint_prefix": 0 if diagnostic else min(n, 8)},
+                           "disjoint_prefix": 0 if diagnostic else min(n, 8),
+                           "extension_strategy": "coordinated-seven" if not diagnostic and extra9 == 1 else "independent-extra"},
             "coverage": {"distinct_numbers": len(union), "unique_triples": n * 20,
                          "mean_overlap": mean(overlaps), "max_overlap": max(overlaps, default=0),
                          "max_allowed_overlap": MAX_SHARED,
@@ -406,6 +407,14 @@ def _generate_pack649(model, n=6, seed=649, extra9=1, diagnostic=False):
                                      for k in range(4, 7)) / math.comb(49, 6)
                              if not diagnostic and n <= 6 and extra9 == 1 else None),
                          "seven_system_paid_variants": (7 * n if extra9 == 1 else None),
+                         "probability_ge4_equal_cost_simple": (
+                             7 * n * sum(math.comb(6, k) * math.comb(43, 6-k)
+                                         for k in range(4, 7)) / math.comb(49, 6)
+                             if extra9 == 1 and n <= 6 and not diagnostic else None),
+                         "probability_ge4_at_50_simple": (
+                             50 * sum(math.comb(6, k) * math.comb(43, 6-k)
+                                      for k in range(4, 7)) / math.comb(49, 6)),
+
                          "seven_system_disjoint": (not diagnostic and n <= 6 and extra9 == 1),
                          "guarantees_four_hits": False}}
 
