@@ -1081,13 +1081,19 @@ function exportPDF(){
     ['Numere distincte in pachet',d.coverage.distinct_numbers],
     ['Triplete diferite',d.coverage.unique_triples],
     ['Suprapunere maxima',d.coverage.max_overlap],
+    ['Probabilitate 4+ pe cel putin un bilet',
+      d.coverage.max_overlap <= 1
+        ? (100 * d.tickets6.length * 13804 / 13983816).toFixed(3) + '%'
+        : 'necalculata (suprapunere mare)'],
+    ['Variante simple propuse',d.tickets6.length],
+    ['Cost relativ fata de 6 simple',(d.tickets6.length / 6).toFixed(1) + 'x'],
     ['Generare','Uniforma, fara ponderi istorice'],
     ['Data care fixeaza biletele',p.cycle_date||d.data.last_date],
   ]});
   // 6. bilete
   const extLenPdf=(d.tickets9&&d.tickets9[0])?d.tickets9[0].length:(6+p.extra9);
   h2(`6. ${d.tickets6.length} bilete propuse (seed ${d.seed})`);
-  tbl({head:[['Bilet','Numere de baza (6)','Suma','I/P','Forma',`Cu extra (${extLenPdf} numere)`]],
+  tbl({head:[['Bilet','Numere de baza (6)','Suma','I/P','Forma',extLenPdf===6?'Fara extra':`Cu extra (${extLenPdf} numere)`]],
     body:d.tickets6.map((t,i)=>[i+1,t.nums.join(', '),t.sum,t.ip,t.shape,(d.tickets9[i]||[]).join(', ')]),
     columnStyles:{1:{cellWidth:120},5:{cellWidth:150}}});
 
